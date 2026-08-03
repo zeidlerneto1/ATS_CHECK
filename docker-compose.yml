@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  ats-parser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ats-simulator-br
+    volumes:
+      - ./curriculos:/app/curriculos:ro
+      - ./output:/app/output
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    # Override do entrypoint para manter container vivo em dev
+    # entrypoint: ["tail", "-f", "/dev/null"]
+
+  # Fase 2: API REST (descomentar quando implementar)
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: ats-api
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - PYTHONPATH=/app
+  #   command: ["uvicorn", "interfaces.api:app", "--host", "0.0.0.0", "--port", "8000"]
