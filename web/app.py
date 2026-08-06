@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-API Flask - ATS Web com streaming de logs via SSE
+API Flask - ATS Web com streaming de logs e vaga personalizada
 """
 import os
 import sys
 import json
 import time
-import threading
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, Response
 from werkzeug.utils import secure_filename
@@ -17,12 +16,12 @@ from engine.ats_engine import ATSEngine, JobDescription
 from engine.logger import ATSLogger
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Job descriptions demo
+# Vagas pré-configuradas
 JOBS = {
     "fullstack_junior": JobDescription(
         title="Desenvolvedor Full Stack Júnior/Pleno",
@@ -72,17 +71,97 @@ JOBS = {
             "Monitorar aplicações e infraestrutura",
         ]
     ),
+    "frontend_react": JobDescription(
+        title="Frontend React Developer",
+        company="WebCorp",
+        required_skills=["react", "javascript", "typescript", "html", "css", "git"],
+        preferred_skills=["next.js", "redux", "tailwind", "jest", "webpack", "graphql"],
+        required_experience_years=2,
+        education_level="tecnico",
+        responsibilities=[
+            "Desenvolver interfaces com React.js",
+            "Implementar componentes reutilizáveis",
+            "Integrar com APIs RESTful e GraphQL",
+            "Garantir responsividade e acessibilidade",
+            "Escrever testes unitários e de integração",
+        ]
+    ),
+    "data_engineer": JobDescription(
+        title="Data Engineer",
+        company="DataCorp",
+        required_skills=["python", "sql", "postgresql", "docker", "git", "aws"],
+        preferred_skills=["spark", "kafka", "airflow", "dbt", "snowflake", "terraform"],
+        required_experience_years=3,
+        education_level="graduacao",
+        responsibilities=[
+            "Construir pipelines de dados escaláveis",
+            "Modelar bancos de dados analíticos",
+            "Implementar ETL/ELT com Python e SQL",
+            "Gerenciar infraestrutura de dados na nuvem",
+            "Garantir qualidade e governança de dados",
+        ]
+    ),
 }
 
 
 @app.route("/")
 def index():
-    return render_template("index.html", jobs=list(JOBS.keys()))
+    return render_template("index.html")
 
 
 @app.route("/api/jobs")
 def get_jobs():
-    return jsonify({k: {"title": v.title, "company": v.company} for k, v in JOBS.items()})
+    """Retorna todas as vagas pré-configuradas para preview"""
+    jobs_data = {}
+    for key, job in JOBS.items():
+        jobs_data[key] = {
+            "title": job.title,
+            "company": job.company,
+            "required_skills": job.required_skills,
+            "preferred_skills": job.preferred_skills,
+            "required_experience_years": job.required_experience_years,
+            "education_level": job.education_level,
+            "responsibilities": job.responsibilities,
+        }
+    return jsonify(jobs_data)
+
+
+def _parse_job_from_request() -> JobDescription:
+    """Extrai JobDescription do request (preset ou custom)"""
+    job_type = request.form.get("job_type", "preset")
+
+    if job_type == "preset":
+        job_key = request.form.get("job", "fullstack_junior")
+        if job_key not in JOBS:
+            raise ValueError(f"Vaga não encontrada: {job_key}")
+        return JOBS[job_key]
+
+    # Vaga personalizada
+    title = request.form.get("custom_title", "Vaga Personalizada").strip()
+    company = request.form.get("custom_company", "Empresa").strip()
+
+    # Parse skills (separadas por vírgula, nova linha ou ponto-e-vírgula)
+    required_raw = request.form.get("custom_required", "")
+    required_skills = [s.strip().lower() for s in re.split(r'[,;\n]', required_raw) if s.strip()]
+
+    preferred_raw = request.form.get("custom_preferred", "")
+    preferred_skills = [s.strip().lower() for s in re.split(r'[,;\n]', preferred_raw) if s.strip()]
+
+    exp_years = int(request.form.get("custom_exp", "0") or "0")
+    edu_level = request.form.get("custom_edu", "tecnico")
+
+    resp_raw = request.form.get("custom_resp", "")
+    responsibilities = [r.strip() for r in resp_raw.split("\n") if r.strip()]
+
+    return JobDescription(
+        title=title,
+        company=company,
+        required_skills=required_skills,
+        preferred_skills=preferred_skills,
+        required_experience_years=exp_years,
+        education_level=edu_level,
+        responsibilities=responsibilities
+    )
 
 
 @app.route("/api/analyze", methods=["POST"])
@@ -91,27 +170,25 @@ def analyze():
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
 
     file = request.files["cv"]
-    job_key = request.form.get("job", "fullstack_junior")
-
     if file.filename == "":
         return jsonify({"error": "Arquivo vazio"}), 400
-
-    if job_key not in JOBS:
-        return jsonify({"error": "Vaga não encontrada"}), 400
 
     ext = Path(file.filename).suffix.lower()
     if ext not in ['.pdf', '.docx']:
         return jsonify({"error": f"Formato não suportado: {ext}"}), 400
 
+    try:
+        job = _parse_job_from_request()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     filename = secure_filename(file.filename)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
-    job = JOBS[job_key]
     engine = ATSEngine()
-
-    # Coleta logs em lista
     logs_buffer = []
+
     def log_callback(entry):
         logs_buffer.append({
             "timestamp": entry.timestamp,
@@ -126,6 +203,11 @@ def analyze():
 
     return jsonify({
         "success": True,
+        "job": {
+            "title": result.job_title,
+            "required_skills": job.required_skills,
+            "preferred_skills": job.preferred_skills,
+        },
         "result": {
             "candidate_name": result.candidate_name,
             "job_title": result.job_title,
@@ -144,84 +226,6 @@ def analyze():
         "logs": logs_buffer,
         "raw_text_preview": result.raw_text[:500] + "..." if len(result.raw_text) > 500 else result.raw_text,
     })
-
-
-@app.route("/api/analyze/stream", methods=["POST"])
-def analyze_stream():
-    """SSE endpoint para logs em tempo real"""
-    if "cv" not in request.files:
-        def error_gen():
-            yield f"data: {json.dumps({'type': 'error', 'message': 'Nenhum arquivo'})}\n\n"
-        return Response(error_gen(), mimetype="text/event-stream")
-
-    file = request.files["cv"]
-    job_key = request.form.get("job", "fullstack_junior")
-
-    ext = Path(file.filename).suffix.lower()
-    if ext not in ['.pdf', '.docx']:
-        def error_gen():
-            yield f"data: {json.dumps({'type': 'error', 'message': f'Formato não suportado: {ext}'})}\n\n"
-        return Response(error_gen(), mimetype="text/event-stream")
-
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
-
-    job = JOBS.get(job_key, JOBS["fullstack_junior"])
-
-    def generate():
-        engine = ATSEngine()
-        result_container = {}
-
-        def log_callback(entry):
-            data = json.dumps({
-                "type": "log",
-                "timestamp": entry.timestamp,
-                "stage": entry.stage,
-                "stage_name": ATSLogger.STAGES.get(entry.stage, entry.stage),
-                "action": entry.action,
-                "details": entry.details,
-                "severity": entry.severity,
-            })
-            yield f"data: {data}\n\n"
-
-        # Executa análise
-        result = engine.analyze(filepath, job)
-
-        # Envia logs acumulados
-        for log in result.logs:
-            data = json.dumps({
-                "type": "log",
-                "timestamp": log["timestamp"],
-                "stage": log["stage"],
-                "stage_name": log["stage_name"],
-                "action": log["action"],
-                "details": log["details"],
-                "severity": log["severity"],
-            })
-            yield f"data: {data}\n\n"
-            time.sleep(0.05)  # Pequeno delay para efeito visual
-
-        # Envia resultado final
-        yield f"data: {json.dumps({'type': 'result', 'result': {\n"
-        yield f"  'candidate_name': result.candidate_name,\n"
-        yield f"  'job_title': result.job_title,\n"
-        yield f"  'overall_score': result.overall_score,\n"
-        yield f"  'skill_match_score': result.skill_match_score,\n"
-        yield f"  'experience_score': result.experience_score,\n"
-        yield f"  'education_score': result.education_score,\n"
-        yield f"  'formatting_score': result.formatting_score,\n"
-        yield f"  'semantic_score': result.semantic_score,\n"
-        yield f"  'keyword_density_score': result.keyword_density_score,\n"
-        yield f"  'matched_keywords': result.matched_keywords,\n"
-        yield f"  'missing_keywords': result.missing_keywords,\n"
-        yield f"  'red_flags': result.red_flags,\n"
-        yield f"  'recommendations': result.recommendations\n"
-        yield f"}})}\n\n"
-
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
-
-    return Response(generate(), mimetype="text/event-stream")
 
 
 if __name__ == "__main__":

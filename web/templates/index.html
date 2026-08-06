@@ -24,20 +24,78 @@
                     </div>
                     <input type="file" id="fileInput" accept=".pdf,.docx" hidden>
                 </div>
+            </section>
 
-                <div class="job-selector">
-                    <label for="jobSelect">🎯 Vaga:</label>
-                    <select id="jobSelect">
-                        <option value="fullstack_junior">Desenvolvedor Full Stack Júnior/Pleno</option>
-                        <option value="backend_senior">Desenvolvedor Backend Sênior</option>
-                        <option value="devops">DevOps Engineer</option>
-                    </select>
+            <!-- Job Section -->
+            <section class="job-section">
+                <div class="job-tabs">
+                    <button class="job-tab active" data-tab="preset">🎯 Vagas Prontas</button>
+                    <button class="job-tab" data-tab="custom">✏️ Vaga Personalizada</button>
                 </div>
 
-                <button id="analyzeBtn" class="btn-primary" disabled>
-                    🔍 Analisar CV
-                </button>
+                <!-- Preset Jobs -->
+                <div class="job-panel active" id="presetPanel">
+                    <div class="job-selector">
+                        <label for="jobSelect">Escolha uma vaga:</label>
+                        <select id="jobSelect">
+                            <option value="fullstack_junior">Desenvolvedor Full Stack Júnior/Pleno</option>
+                            <option value="backend_senior">Desenvolvedor Backend Sênior</option>
+                            <option value="devops">DevOps Engineer</option>
+                            <option value="frontend_react">Frontend React Developer</option>
+                            <option value="data_engineer">Data Engineer</option>
+                        </select>
+                    </div>
+                    <div class="job-preview" id="jobPreview">
+                        <!-- Preenche via JS -->
+                    </div>
+                </div>
+
+                <!-- Custom Job -->
+                <div class="job-panel" id="customPanel">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="customTitle">📋 Título da Vaga</label>
+                            <input type="text" id="customTitle" placeholder="Ex: Desenvolvedor Full Stack Pleno">
+                        </div>
+                        <div class="form-group">
+                            <label for="customCompany">🏢 Empresa</label>
+                            <input type="text" id="customCompany" placeholder="Ex: TechCorp">
+                        </div>
+                        <div class="form-group">
+                            <label for="customExp">📅 Anos de Experiência Requeridos</label>
+                            <input type="number" id="customExp" min="0" max="20" value="1" placeholder="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="customEdu">🎓 Nível de Educação</label>
+                            <select id="customEdu">
+                                <option value="tecnico">Técnico/Tecnólogo</option>
+                                <option value="graduacao">Graduação (Bacharel)</option>
+                                <option value="mestrado">Mestrado</option>
+                                <option value="phd">Doutorado</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="customRequired">⭐ Skills Obrigatórias <small>(separadas por vírgula)</small></label>
+                        <textarea id="customRequired" rows="2" placeholder="node.js, react, postgresql, docker, git"></textarea>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="customPreferred">✨ Skills Desejáveis <small>(separadas por vírgula)</small></label>
+                        <textarea id="customPreferred" rows="2" placeholder="kubernetes, aws, ci/cd, typescript"></textarea>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="customResp">📝 Responsabilidades <small>(uma por linha)</small></label>
+                        <textarea id="customResp" rows="4" placeholder="Desenvolver aplicações web full stack&#10;Criar APIs RESTful&#10;Implementar testes automatizados"></textarea>
+                    </div>
+                </div>
             </section>
+
+            <button id="analyzeBtn" class="btn-primary" disabled>
+                🔍 Analisar CV
+            </button>
 
             <!-- Progress & Logs -->
             <section class="logs-section" id="logsSection" style="display: none;">
@@ -105,11 +163,11 @@
 
                 <div class="keywords-section">
                     <div class="keywords-col">
-                        <h3>✅ Keywords Encontradas</h3>
+                        <h3>✅ Keywords Encontradas <span id="matchedCount"></span></h3>
                         <div class="keywords-list" id="matchedKeywords"></div>
                     </div>
                     <div class="keywords-col">
-                        <h3>❌ Keywords Faltando</h3>
+                        <h3>❌ Keywords Faltando <span id="missingCount"></span></h3>
                         <div class="keywords-list" id="missingKeywords"></div>
                     </div>
                 </div>
