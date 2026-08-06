@@ -153,12 +153,39 @@ class ATSEngine:
                    "configured", "installed", "updated", "migrated", "tested", "documented"],
         }
 
+        # Marcadores de code-switching mal feito (Cap. 9)
+        self.BAD_CODE_SWITCH_PATTERNS = [
+            r"(?:eu\s+(?:developed|created|built|managed)|I\s+(?:desenvolvi|criei|implementei))",
+            r"(?:trabalhei\s+as\s+a|atuei\s+as\s+a)",
+            r"(?:responsible\s+por|responsable\s+for)",
+        ]
+
+        # Empresas reconhecidas (para recency bias do recrutador)
+        self.RECOGNIZED_COMPANIES = [
+            "google", "microsoft", "amazon", "apple", "meta", "netflix", "spotify",
+            "uber", "airbnb", "stripe", "shopify", "slack", "zoom", "docker",
+            "github", "gitlab", "atlassian", "salesforce", "oracle", "ibm",
+            "accenture", "deloitte", "pwc", "kpmg", "ey",
+            "itau", "bradesco", "santander", "nubank", "picpay", "stone", "c6 bank",
+            "mercadolivre", "magalu", "americanas", "submarino", "shopee",
+            "globo", "uol", "terra", "r7",
+            "petrobras", "vale", "ambev", " BRF", "jbs",
+            "embraer", "weg", "locaweb", "totvs", "senior",
+        ]
+
         self._debug_data = {
             "contact": {}, "parsed_metadata": {}, "keyword_details": {},
             "score_components": {}, "experience_years_detected": None,
             "education_level_detected": 0, "sections_found": [],
             "section_scores": {}, "semantic_clusters": [], "career_gaps": [],
             "bullet_analysis": [], "bilingual_bonus": 0, "context_bleed": [],
+            "bom_detected": False,
+            "white_fonting": [],
+            "copied_bullets": [],
+            "too_good_to_be_true": [],
+            "code_switching_issues": [],
+            "recruiter_view": {},
+            "file_format_issues": [],
         }
 
     def get_debug_data(self) -> Dict[str, Any]:
@@ -226,12 +253,39 @@ class ATSEngine:
                    "configured", "installed", "updated", "migrated", "tested", "documented"],
         }
 
+        # Marcadores de code-switching mal feito (Cap. 9)
+        self.BAD_CODE_SWITCH_PATTERNS = [
+            r"(?:eu\s+(?:developed|created|built|managed)|I\s+(?:desenvolvi|criei|implementei))",
+            r"(?:trabalhei\s+as\s+a|atuei\s+as\s+a)",
+            r"(?:responsible\s+por|responsable\s+for)",
+        ]
+
+        # Empresas reconhecidas (para recency bias do recrutador)
+        self.RECOGNIZED_COMPANIES = [
+            "google", "microsoft", "amazon", "apple", "meta", "netflix", "spotify",
+            "uber", "airbnb", "stripe", "shopify", "slack", "zoom", "docker",
+            "github", "gitlab", "atlassian", "salesforce", "oracle", "ibm",
+            "accenture", "deloitte", "pwc", "kpmg", "ey",
+            "itau", "bradesco", "santander", "nubank", "picpay", "stone", "c6 bank",
+            "mercadolivre", "magalu", "americanas", "submarino", "shopee",
+            "globo", "uol", "terra", "r7",
+            "petrobras", "vale", "ambev", " BRF", "jbs",
+            "embraer", "weg", "locaweb", "totvs", "senior",
+        ]
+
         self._debug_data = {
             "contact": {}, "parsed_metadata": {}, "keyword_details": {},
             "score_components": {}, "experience_years_detected": None,
             "education_level_detected": 0, "sections_found": [],
             "section_scores": {}, "semantic_clusters": [], "career_gaps": [],
             "bullet_analysis": [], "bilingual_bonus": 0, "context_bleed": [],
+            "bom_detected": False,
+            "white_fonting": [],
+            "copied_bullets": [],
+            "too_good_to_be_true": [],
+            "code_switching_issues": [],
+            "recruiter_view": {},
+            "file_format_issues": [],
         }
 
         # INGEST + PARSE
@@ -286,6 +340,28 @@ class ATSEngine:
         # 10. Context bleed
         bleed_bonus, bleed_details = self._detect_context_bleed(sections, matched)
         self._debug_data["context_bleed"] = bleed_details
+
+        # === CAP. 2: DETECÇÃO DE FORMATO DE ARQUIVO ===
+        file_issues = self._detect_file_format_issues(file_path, parsed)
+        self._debug_data["file_format_issues"] = file_issues
+
+        # === CAP. 6: DETECTORES DE HACKS OCULTOS ===
+        white_fonting = self._detect_white_fonting(raw_text, parsed)
+        self._debug_data["white_fonting"] = white_fonting
+
+        copied = self._detect_copied_bullets(raw_text, job.responsibilities, sections)
+        self._debug_data["copied_bullets"] = copied
+
+        too_good = self._detect_too_good_to_be_true(raw_text, matched, sections)
+        self._debug_data["too_good_to_be_true"] = too_good
+
+        # === CAP. 9: CODE-SWITCHING ===
+        cs_issues = self._detect_code_switching(raw_text, sections)
+        self._debug_data["code_switching_issues"] = cs_issues
+
+        # === CAP. 15: VISÃO DO RECRUTADOR ===
+        recruiter = self._detect_recruiter_view(raw_text, sections, matched, job)
+        self._debug_data["recruiter_view"] = recruiter
 
         # SCORE (com bônus da Onda 2)
         skill_score = self._calc_skill_score(matched, job.required_skills, job.preferred_skills)
@@ -728,6 +804,23 @@ class ATSEngine:
                 if most_common[1] > len(filtered_words) * 0.15:  # >15% de uma palavra
                     flags.append(f"⚠️ Keyword stuffing em '{sec_name}': '{most_common[0]}' repetido {most_common[1]}x")
 
+        # Cap. 6: White-fonting
+        white_font = self._detect_white_fonting(text, {})
+        if white_font:
+            flags.append(f"🚨 White-fonting detectado: {len(white_font)} ocorrência(s) de texto escondido")
+
+        # Cap. 6: Bullets copiados da vaga
+        if copied:
+            flags.append(f"🚨 {len(copied)} bullet(s) copiado(s) da descrição da vaga — red flag para recrutadores")
+
+        # Cap. 6: Experiência "muito boa para ser verdade"
+        if too_good:
+            flags.append(f"⚠️ Perfil suspeito: {len(too_good)} indicação(ões) de 'muito bom para ser verdade'")
+
+        # Cap. 9: Code-switching mal feito
+        if cs_issues:
+            flags.append(f"⚠️ Code-switching mal feito detectado em {len(cs_issues)} seção(ões)")
+
         return flags
 
 
@@ -970,3 +1063,313 @@ class ATSEngine:
                 recs.append("📊 Adicione métricas nos bullets (números, %, tempo). Ex: 'Reduzi tempo de deploy de 2h para 15min'.")
 
         return recs
+
+
+    # ============================================================
+    # CAP. 2: DETECÇÃO DE FORMATO DE ARQUIVO (BOM, PDF vs DOCX)
+    # ============================================================
+    def _detect_file_format_issues(self, file_path: str, parsed: Dict) -> List[Dict]:
+        """Detecta problemas de formato: BOM, PDF imagem, encoding"""
+        issues = []
+
+        # Detectar BOM no arquivo
+        try:
+            with open(file_path, 'rb') as f:
+                raw = f.read(4)
+                # UTF-8 BOM: EF BB BF
+                if raw.startswith(b'\xef\xbb\xbf'):
+                    issues.append({"type": "bom", "message": "UTF-8 BOM detectado no início do arquivo", "severity": "warning"})
+                    self._debug_data["bom_detected"] = True
+                # UTF-16 BOM
+                elif raw.startswith(b'\xff\xfe') or raw.startswith(b'\xfe\xff'):
+                    issues.append({"type": "bom", "message": "UTF-16 BOM detectado — pode causar problemas de parsing", "severity": "critical"})
+                    self._debug_data["bom_detected"] = True
+        except Exception:
+            pass
+
+        # Detectar PDF como imagem (texto não extraível)
+        if parsed.get("file_type") == "pdf" and parsed.get("metadata", {}).get("is_image_pdf"):
+            issues.append({"type": "image_pdf", "message": "PDF contém apenas imagens — texto não é selecionável", "severity": "critical"})
+
+        # Verificar se o texto extraído é muito curto para um PDF (possível imagem)
+        raw_text = parsed.get("raw_text", "")
+        if parsed.get("file_type") == "pdf" and len(raw_text) < 200:
+            issues.append({"type": "short_pdf", "message": f"PDF extraído com apenas {len(raw_text)} caracteres — possível imagem ou scan", "severity": "warning"})
+
+        self.logger.log("FILTER", f"Problemas de arquivo: {len(issues)} detectados", {"issues": issues})
+        return issues
+
+    # ============================================================
+    # CAP. 6: DETECTORES DE HACKS OCULTOS
+    # ============================================================
+    def _detect_white_fonting(self, text: str, parsed: Dict) -> List[Dict]:
+        """Detecta white-fonting: texto escondido com cor branca ou fonte minúscula"""
+        findings = []
+
+        # Padrão 1: Palavras repetidas excessivamente (possível stuffing escondido)
+        words = re.findall(r'\b\w{3,}\b', text.lower())
+        from collections import Counter
+        word_counts = Counter(words)
+        for word, count in word_counts.most_common(5):
+            if count > len(words) * 0.20 and len(words) > 50:  # >20% de uma palavra
+                findings.append({"type": "suspicious_repetition", "word": word, "count": count, "message": f"Palavra '{word}' aparece {count}x ({count/len(words)*100:.1f}%) — possível stuffing"})
+
+        # Padrão 2: Texto entre tags HTML escondidas (alguns parsers deixam passar)
+        hidden_html = re.findall(r'<span[^>]*style=.*?color.*?white.*?</span>', text, re.IGNORECASE)
+        for hidden in hidden_html:
+            findings.append({"type": "html_white_font", "text": hidden[:50], "message": "Texto com cor branca detectado (HTML)"})
+
+        # Padrão 3: Fonte muito pequena indicada no texto
+        tiny_font = re.findall(r'font-size\s*:\s*(\d+)\s*pt', text, re.IGNORECASE)
+        for size in tiny_font:
+            if int(size) < 6:
+                findings.append({"type": "tiny_font", "size": size, "message": f"Fonte de {size}pt detectada — possível texto escondido"})
+
+        # Padrão 4: Caracteres invisíveis / zero-width
+        invisible = re.findall(r'[\u200b\u200c\u200d\ufeff\u2060]', text)
+        if invisible:
+            findings.append({"type": "invisible_chars", "count": len(invisible), "message": f"{len(invisible)} caractere(s) invisível(is) detectado(s)"})
+
+        if findings:
+            self.logger.log("FILTER", f"White-fonting: {len(findings)} ocorrências", {"findings": findings})
+        return findings
+
+    def _detect_copied_bullets(self, text: str, responsibilities: List[str], sections: Dict) -> List[Dict]:
+        """Detecta bullets que foram copiados diretamente da descrição da vaga"""
+        copied = []
+        if not responsibilities:
+            return copied
+
+        exp_text = sections.get("experiencia", sections.get("experiência", ""))
+        if not exp_text:
+            return copied
+
+        bullets = [b.strip() for b in exp_text.split("\n") if b.strip().startswith(("-", "•", "*", "►", "▸", "→")) or len(b.strip()) > 20]
+
+        for bullet in bullets:
+            bullet_lower = bullet.lower()
+            for resp in responsibilities:
+                resp_lower = resp.lower()
+                # Verificar similaridade: se o bullet contém >60% das palavras da responsabilidade
+                resp_words = set(re.findall(r'\b[a-z]{4,}\b', resp_lower))
+                bullet_words = set(re.findall(r'\b[a-z]{4,}\b', bullet_lower))
+                if len(resp_words) > 3 and len(bullet_words) > 3:
+                    overlap = len(resp_words & bullet_words)
+                    similarity = overlap / len(resp_words)
+                    if similarity > 0.6:  # >60% das palavras da vaga aparecem no bullet
+                        copied.append({
+                            "bullet_preview": bullet[:80] + "..." if len(bullet) > 80 else bullet,
+                            "matched_resp": resp[:80] + "..." if len(resp) > 80 else resp,
+                            "similarity": round(similarity * 100, 1),
+                        })
+                        break  # Um bullet só pode ser copiado de uma responsabilidade
+
+        if copied:
+            self.logger.log("FILTER", f"Bullets copiados: {len(copied)} detectados", {"copied": copied})
+        return copied
+
+    def _detect_too_good_to_be_true(self, text: str, matched_skills: List[str], sections: Dict) -> List[Dict]:
+        """Detecta perfis que parecem 'muito bons para ser verdade'"""
+        flags = []
+        text_lower = text.lower()
+
+        # 1. Número excessivo de skills declaradas como "sênior"
+        senior_count = len(re.findall(r'\b(?:sênior|senior|especialista|expert|advanced)\b', text_lower))
+        skill_count = len(matched_skills)
+        if skill_count > 15 and senior_count > 5:
+            flags.append({
+                "type": "too_many_senior_skills",
+                "message": f"{skill_count} skills com {senior_count} marcadas como sênior — suspeito",
+                "details": {"skills": skill_count, "senior_labels": senior_count}
+            })
+
+        # 2. Experiência muito curta com muitas tecnologias
+        years_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:anos?|years?)', text_lower)
+        if years_match and skill_count > 15:
+            years = float(years_match.group(1))
+            if years < 3 and skill_count > 15:
+                flags.append({
+                    "type": "junior_with_many_skills",
+                    "message": f"{years} anos de experiência com {skill_count} skills — 'full stack de 1 ano'",
+                    "details": {"years": years, "skills": skill_count}
+                })
+
+        # 3. Múltiplas funções sênior simultâneas
+        roles = re.findall(r'\b(?:arquiteto|architect|tech lead|principal|staff|director|diretor|gerente|manager)\b', text_lower)
+        if len(roles) > 3:
+            flags.append({
+                "type": "multiple_senior_roles",
+                "message": f"{len(roles)} funções de liderança/arquitetura declaradas — verificar consistência",
+                "details": {"roles_found": roles}
+            })
+
+        # 4. Crescimento impossível (promoções muito rápidas)
+        # Detectar múltiplos cargos em pouco tempo
+        exp_section = sections.get("experiencia", sections.get("experiência", ""))
+        job_titles = re.findall(r'(?:cargo|position|role)?\s*[:\-]?\s*([A-Z][a-zA-Z\s]{5,30}?)(?:\n|\||\-)', exp_section)
+        if len(job_titles) > 4:
+            flags.append({
+                "type": "too_many_positions",
+                "message": f"{len(job_titles)} cargos detectados — possível job hopping excessivo",
+                "details": {"positions": job_titles[:5]}
+            })
+
+        if flags:
+            self.logger.log("FILTER", f"'Too good to be true': {len(flags)} indicações", {"flags": flags})
+        return flags
+
+    # ============================================================
+    # CAP. 9: CODE-SWITCHING
+    # ============================================================
+    def _detect_code_switching(self, text: str, sections: Dict) -> List[Dict]:
+        """Detecta code-switching mal feito (mistura desajeitada de PT e EN)"""
+        issues = []
+
+        for sec_name, sec_content in sections.items():
+            sec_lower = sec_content.lower()
+
+            for pattern in self.BAD_CODE_SWITCH_PATTERNS:
+                matches = re.findall(pattern, sec_lower, re.IGNORECASE)
+                if matches:
+                    issues.append({
+                        "section": sec_name,
+                        "pattern": pattern,
+                        "matches": matches[:3],
+                        "message": f"Code-switching mal feito em '{sec_name}': '{matches[0]}'"
+                    })
+
+            # Detectar frases que misturam PT e EN de forma desajeitada
+            # Ex: "Eu desenvolvi a API usando Node.js" -> OK
+            # Ex: "Eu developed the API using Node.js" -> PROBLEMA
+            bad_phrases = re.findall(r'\b(?:eu|meu|minha|nosso|nossa|seu|sua)\s+[a-z]{5,}ed\b', sec_lower)
+            if bad_phrases:
+                issues.append({
+                    "section": sec_name,
+                    "type": "pt_pronoun_en_verb",
+                    "matches": bad_phrases[:3],
+                    "message": f"Pronome PT + verbo EN em '{sec_name}'"
+                })
+
+            # Detectar preposições erradas
+            wrong_prep = re.findall(r'\b(?:experiência|experience)\s+(?:with|using|in|on)\b', sec_lower)
+            if wrong_prep:
+                issues.append({
+                    "section": sec_name,
+                    "type": "wrong_preposition",
+                    "matches": wrong_prep[:3],
+                    "message": f"Preposição estrangeira em contexto PT em '{sec_name}'"
+                })
+
+        if issues:
+            self.logger.log("FILTER", f"Code-switching: {len(issues)} problemas", {"issues": issues})
+        return issues
+
+    # ============================================================
+    # CAP. 15: VISÃO DO RECRUTADOR (10-SEGUNDOS SCAN)
+    # ============================================================
+    def _detect_recruiter_view(self, text: str, sections: Dict, matched_skills: List[str], job: JobDescription) -> Dict:
+        """Simula o que um recrutador humano vê em 10 segundos"""
+        view = {
+            "scan_time_seconds": 10,
+            "first_impression": "",
+            "recency_bias_warning": False,
+            "metrics_detected": 0,
+            "metrics_ratio": 0.0,
+            "low_metrics_ratio": False,
+            "has_recognized_company": False,
+            "recognized_companies_found": [],
+            "top_skills_visible": [],
+            "attention_grabbers": [],
+            "red_flags_human": [],
+            "what_recruiter_ignores": [],
+            "what_recruiter_notices": [],
+        }
+
+        text_lower = text.lower()
+
+        # 1. RECENCY BIAS: experiência mais recente é a mais analisada
+        exp_section = sections.get("experiencia", sections.get("experiência", ""))
+        if exp_section:
+            # Pegar a primeira experiência (mais recente, se ordenada cronologicamente)
+            first_exp = exp_section.split("\n")[:10]
+            first_exp_text = " ".join(first_exp).lower()
+
+            # Verificar se a experiência mais recente tem relação com a vaga
+            job_skills_lower = [s.lower() for s in job.required_skills]
+            recent_has_relevance = any(s in first_exp_text for s in job_skills_lower)
+            if not recent_has_relevance:
+                view["recency_bias_warning"] = True
+                view["red_flags_human"].append("Experiência mais recente não parece relevante para a vaga")
+
+        # 2. MÉTRICAS QUANTIFICÁVEIS: bullets com números ganham atenção
+        all_bullets = []
+        for sec_name, sec_content in sections.items():
+            bullets = [b.strip() for b in sec_content.split("\n") if b.strip().startswith(("-", "•", "*", "►", "▸", "→")) or len(b.strip()) > 20]
+            all_bullets.extend(bullets)
+
+        metrics_count = 0
+        for bullet in all_bullets:
+            if re.search(r'\d+%|\d+\s*(?:x|vezes|times|h|horas|min|dias|meses|anos|k|mil|mi|R\$|\$)', bullet.lower()):
+                metrics_count += 1
+
+        view["metrics_detected"] = metrics_count
+        view["metrics_ratio"] = round(metrics_count / len(all_bullets), 2) if all_bullets else 0
+        view["low_metrics_ratio"] = view["metrics_ratio"] < 0.3
+
+        if view["low_metrics_ratio"]:
+            view["what_recruiter_ignores"].append("Bullets sem números ou métricas (parece genérico)")
+        if metrics_count > 0:
+            view["attention_grabbers"].append(f"{metrics_count} bullet(s) com métricas quantificáveis")
+
+        # 3. EMPRESA RECONHECIDA: marcas capturam atenção
+        for company in self.RECOGNIZED_COMPANIES:
+            if company.lower() in text_lower:
+                view["has_recognized_company"] = True
+                view["recognized_companies_found"].append(company)
+
+        if view["has_recognized_company"]:
+            view["attention_grabbers"].append(f"Empresa reconhecida: {view['recognized_companies_found'][0]}")
+        else:
+            view["what_recruiter_ignores"].append("Nenhuma empresa conhecida no topo do CV")
+
+        # 4. TOP SKILLS VISÍVEIS (as que o recrutador nota em 10s)
+        # O recrutador olha para o topo: resumo + primeira experiência
+        top_text = sections.get("resumo", "") + "\n" + exp_section[:500]
+        top_text_lower = top_text.lower()
+        for skill in matched_skills[:8]:
+            if skill.lower() in top_text_lower:
+                view["top_skills_visible"].append(skill)
+
+        if len(view["top_skills_visible"]) < 3:
+            view["red_flags_human"].append("Poucas skills relevantes visíveis no topo do CV")
+
+        # 5. INCONSISTÊNCIAS EM DATAS (gaps não explicados)
+        gaps = self._debug_data.get("career_gaps", [])
+        critical_gaps = [g for g in gaps if g["severity"] == "critical"]
+        if critical_gaps:
+            view["red_flags_human"].append(f"Gap de {critical_gaps[0]['months']} meses sem explicação")
+
+        # 6. KEYWORD STUFFING EVIDENTE (>10% para um único termo)
+        # Já detectado em red_flags, mas reforçar na visão humana
+        # O recrutador nota quando uma palavra aparece demais
+
+        # 7. PRIMEIRA IMPRESSÃO
+        if view["has_recognized_company"] and view["metrics_ratio"] > 0.3:
+            view["first_impression"] = "✅ Forte — empresa conhecida + métricas"
+        elif view["has_recognized_company"]:
+            view["first_impression"] = "🟡 Boa — empresa conhecida, mas poucas métricas"
+        elif view["metrics_ratio"] > 0.3:
+            view["first_impression"] = "🟡 Boa — métricas fortes, mas sem marca conhecida"
+        else:
+            view["first_impression"] = "🔴 Fraca — precisa de empresa conhecida ou métricas"
+
+        # 8. O QUE O RECRUTADOR NOTA vs IGNORA
+        view["what_recruiter_notices"] = [
+            "Nome e contato (3s)",
+            "Última experiência + empresa (4s)",
+            "Primeiros bullets com números (2s)",
+            "Skills no topo (1s)",
+        ]
+
+        self.logger.log("DECISION", "Visão do recrutador (10s scan)", view)
+        return view

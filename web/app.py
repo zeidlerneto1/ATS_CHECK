@@ -326,6 +326,14 @@ def analyze():
             "bullet_analysis": debug.get("bullet_analysis", []),
             "bilingual_bonus": debug.get("bilingual_bonus", 0),
             "context_bleed": debug.get("context_bleed", []),
+            # Cap. 2, 6, 9, 15
+            "bom_detected": debug.get("bom_detected", False),
+            "white_fonting": debug.get("white_fonting", []),
+            "copied_bullets": debug.get("copied_bullets", []),
+            "too_good_to_be_true": debug.get("too_good_to_be_true", []),
+            "code_switching_issues": debug.get("code_switching_issues", []),
+            "recruiter_view": debug.get("recruiter_view", {}),
+            "file_format_issues": debug.get("file_format_issues", []),
         },
     })
 
@@ -628,6 +636,10 @@ def generate_latex():
 @app.route("/cv-builder")
 def cv_builder():
     return render_template("cv_builder.html")
+
+@app.route("/recruiter-view")
+def recruiter_view():
+    return render_template("recruiter_view.html")
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)

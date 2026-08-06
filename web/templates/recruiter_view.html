@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👁️ Visão do Recrutador — ATS Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --bg: #0f172a; --card-bg: #1e293b; --border: #334155;
+            --text: #e2e8f0; --text-muted: #94a3b8; --accent: #6366f1;
+            --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; --info: #3b82f6;
+            --success-light: rgba(34,197,94,0.1); --warning-light: rgba(245,158,11,0.1);
+            --danger-light: rgba(239,68,68,0.1); --info-light: rgba(59,130,246,0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        header { text-align: center; padding: 30px 0 20px; }
+        header h1 { font-size: 2rem; margin-bottom: 8px; }
+        header p { color: var(--text-muted); }
+        .main-nav { display: flex; justify-content: center; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+        .nav-link { display: inline-block; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s; background: rgba(99,102,241,0.1); color: #c7d2fe; border: 1px solid rgba(99,102,241,0.2); }
+        .nav-link:hover { background: rgba(99,102,241,0.2); transform: translateY(-1px); }
+        .nav-link.active { background: #6366f1; color: #fff; border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+        @media (max-width: 480px) { .main-nav { flex-direction: column; align-items: center; } .nav-link { width: 80%; text-align: center; } }
+
+        .upload-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 20px 0; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(99,102,241,0.05); }
+        .drop-zone .icon { font-size: 3rem; display: block; margin-bottom: 12px; }
+        .drop-zone p { font-size: 1.1rem; margin-bottom: 8px; }
+        .drop-zone small { color: var(--text-muted); }
+
+        .scan-timer { text-align: center; padding: 30px; background: linear-gradient(135deg, var(--accent), #7c3aed); border-radius: 12px; margin: 20px 0; color: white; }
+        .scan-timer h2 { font-size: 1.5rem; margin-bottom: 8px; }
+        .scan-timer .timer { font-size: 3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .scan-timer p { opacity: 0.9; margin-top: 8px; }
+
+        .first-impression { text-align: center; padding: 24px; border-radius: 12px; margin: 20px 0; font-size: 1.3rem; font-weight: 600; }
+        .first-impression.strong { background: var(--success-light); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+        .first-impression.good { background: var(--info-light); color: var(--info); border: 1px solid rgba(59,130,246,0.3); }
+        .first-impression.weak { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .card h3 { font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+        .card .big-number { font-size: 2.5rem; font-weight: 700; color: var(--accent); }
+        .card .label { color: var(--text-muted); font-size: 0.9rem; }
+
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin: 3px; }
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-warning { background: var(--warning-light); color: var(--warning); }
+        .badge-danger { background: var(--danger-light); color: var(--danger); }
+        .badge-info { background: var(--info-light); color: var(--info); }
+
+        .section-title { font-size: 1.3rem; font-weight: 600; margin: 30px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+        .section-title .emoji { margin-right: 8px; }
+
+        .list-item { padding: 10px 14px; margin: 6px 0; border-radius: 8px; font-size: 0.95rem; }
+        .list-item.notice { background: var(--info-light); border-left: 3px solid var(--info); }
+        .list-item.warning { background: var(--warning-light); border-left: 3px solid var(--warning); }
+        .list-item.danger { background: var(--danger-light); border-left: 3px solid var(--danger); }
+        .list-item.success { background: var(--success-light); border-left: 3px solid var(--success); }
+
+        .attention-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .attention-grid { grid-template-columns: 1fr; } }
+        .attention-box { padding: 16px; border-radius: 12px; }
+        .attention-box.notices { background: var(--success-light); border: 1px solid rgba(34,197,94,0.2); }
+        .attention-box.ignores { background: rgba(148,163,184,0.1); border: 1px solid rgba(148,163,184,0.2); }
+        .attention-box h4 { margin-bottom: 12px; font-size: 1rem; }
+        .attention-box.notices h4 { color: var(--success); }
+        .attention-box.ignores h4 { color: var(--text-muted); }
+        .attention-box ul { list-style: none; }
+        .attention-box li { padding: 6px 0; font-size: 0.9rem; color: var(--text); }
+        .attention-box li::before { content: "✓ "; color: var(--success); font-weight: bold; }
+        .attention-box.ignores li::before { content: "✗ "; color: var(--text-muted); }
+
+        .hidden { display: none; }
+        .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+        .loading .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👁️ Visão do Recrutador</h1>
+            <p>Simule o que um recrutador humano vê em 10 segundos olhando seu CV</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">📊 Analisador</a>
+                <a href="/logs" class="nav-link">🔍 Logger/Debug</a>
+                <a href="/cv-builder" class="nav-link">📝 CV Builder</a>
+                <a href="/ab-test" class="nav-link">🧪 A/B Test</a>
+                <a href="/recruiter-view" class="nav-link active">👁️ Recrutador</a>
+            </nav>
+        </header>
+
+        <section class="upload-section">
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-content">
+                    <span class="icon">📄</span>
+                    <p>Arraste seu CV aqui ou clique para selecionar</p>
+                    <small>PDF ou DOCX (máx. 16MB)</small>
+                </div>
+            </div>
+            <input type="file" id="cvFile" accept=".pdf,.docx" hidden>
+            <div style="margin-top:16px;">
+                <label style="color:var(--text-muted);font-size:0.9rem;">Vaga:</label>
+                <select id="jobSelect" style="margin-left:8px;padding:8px 12px;border-radius:6px;background:var(--card-bg);color:var(--text);border:1px solid var(--border);">
+                    <option value="fullstack_junior">Desenvolvedor Full Stack Júnior/Pleno</option>
+                    <option value="backend_senior">Desenvolvedor Backend Sênior</option>
+                    <option value="devops">DevOps Engineer</option>
+                    <option value="frontend_react">Frontend React Developer</option>
+                    <option value="data_engineer">Data Engineer</option>
+                </select>
+            </div>
+        </section>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Analisando como um recrutador veria seu CV...</p>
+        </div>
+
+        <div id="results" class="hidden">
+            <!-- Scan Timer -->
+            <div class="scan-timer">
+                <h2>⏱️ Scan do Recrutador</h2>
+                <div class="timer" id="scanTimer">10.0s</div>
+                <p>É assim que um recrutador humano analisa seu CV — em <strong>10 segundos</strong></p>
+            </div>
+
+            <!-- Primeira Impressão -->
+            <div class="first-impression" id="firstImpression">
+                Analisando primeira impressão...
+            </div>
+
+            <!-- Grid Principal -->
+            <div class="section-title"><span class="emoji">📊</span>Métricas do Scan</div>
+            <div class="grid-3">
+                <div class="card">
+                    <h3>🎯 Skills Visíveis no Topo</h3>
+                    <div class="big-number" id="topSkillsCount">0</div>
+                    <div class="label">de <span id="totalSkills">0</span> skills matched</div>
+                </div>
+                <div class="card">
+                    <h3>📈 Bullets com Métricas</h3>
+                    <div class="big-number" id="metricsCount">0</div>
+                    <div class="label">ratio: <span id="metricsRatio">0%</span></div>
+                </div>
+                <div class="card">
+                    <h3>🏢 Empresa Reconhecida</h3>
+                    <div class="big-number" id="hasCompany">—</div>
+                    <div class="label" id="companyName">—</div>
+                </div>
+            </div>
+
+            <!-- O que o recrutador NOTA vs IGNORA -->
+            <div class="section-title"><span class="emoji">🧠</span>O que o Recrutador NOTA vs IGNORA</div>
+            <div class="attention-grid">
+                <div class="attention-box notices">
+                    <h4>✅ O Recrutador NOTA (em 10s)</h4>
+                    <ul id="noticesList"></ul>
+                </div>
+                <div class="attention-box ignores">
+                    <h4>❌ O Recrutador IGNORA</h4>
+                    <ul id="ignoresList"></ul>
+                </div>
+            </div>
+
+            <!-- Red Flags Humanas -->
+            <div class="section-title"><span class="emoji">🚩</span>Red Flags do Recrutador</div>
+            <div id="humanRedFlags"></div>
+
+            <!-- Cap. 2: Problemas de Arquivo -->
+            <div class="section-title"><span class="emoji">📄</span>Problemas de Formato (Cap. 2)</div>
+            <div id="fileIssues"></div>
+
+            <!-- Cap. 6: Hacks Ocultos -->
+            <div class="section-title"><span class="emoji">🕵️</span>Detectores de Hacks Ocultos (Cap. 6)</div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>🎨 White-Fonting</h3>
+                    <div id="whiteFonting"></div>
+                </div>
+                <div class="card">
+                    <h3>📋 Bullets Copiados da Vaga</h3>
+                    <div id="copiedBullets"></div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:16px;">
+                <h3>⚠️ "Muito Bom Para Ser Verdade"</h3>
+                <div id="tooGood"></div>
+            </div>
+
+            <!-- Cap. 9: Code-Switching -->
+            <div class="section-title"><span class="emoji">🌐</span>Code-Switching (Cap. 9)</div>
+            <div id="codeSwitching"></div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const cvFile = document.getElementById('cvFile');
+        const jobSelect = document.getElementById('jobSelect');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+
+        dropZone.addEventListener('click', () => cvFile.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        cvFile.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+        async function handleFile(file) {
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('cv', file);
+            formData.append('job_type', 'preset');
+            formData.append('job', jobSelect.value);
+
+            try {
+                const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.error) { alert(data.error); loading.classList.add('hidden'); return; }
+                render(data);
+            } catch (err) {
+                alert('Erro: ' + err.message);
+            }
+            loading.classList.add('hidden');
+        }
+
+        function render(data) {
+            results.classList.remove('hidden');
+            const debug = data.debug || {};
+            const recruiter = debug.recruiter_view || {};
+
+            // Animação do timer
+            animateTimer();
+
+            // Primeira impressão
+            const fi = document.getElementById('firstImpression');
+            fi.textContent = recruiter.first_impression || 'Não analisado';
+            fi.className = 'first-impression ' + (recruiter.first_impression?.includes('Forte') ? 'strong' : recruiter.first_impression?.includes('Boa') ? 'good' : 'weak');
+
+            // Métricas
+            document.getElementById('topSkillsCount').textContent = (recruiter.top_skills_visible || []).length;
+            document.getElementById('totalSkills').textContent = (data.matched_keywords || []).length;
+            document.getElementById('metricsCount').textContent = recruiter.metrics_detected || 0;
+            document.getElementById('metricsRatio').textContent = ((recruiter.metrics_ratio || 0) * 100).toFixed(0) + '%';
+            document.getElementById('hasCompany').textContent = recruiter.has_recognized_company ? '✅' : '❌';
+            document.getElementById('companyName').textContent = recruiter.recognized_companies_found?.[0] || 'Nenhuma';
+
+            // Notas vs Ignora
+            const noticesList = document.getElementById('noticesList');
+            noticesList.innerHTML = (recruiter.attention_grabbers || []).map(n => `<li>${n}</li>`).join('') || '<li style="color:var(--text-muted)">Nenhum destaque detectado</li>';
+
+            const ignoresList = document.getElementById('ignoresList');
+            ignoresList.innerHTML = (recruiter.what_recruiter_ignores || []).map(i => `<li>${i}</li>`).join('') || '<li style="color:var(--text-muted)">Nada específico</li>';
+
+            // Red flags humanas
+            const hrf = document.getElementById('humanRedFlags');
+            const humanFlags = recruiter.red_flags_human || [];
+            hrf.innerHTML = humanFlags.length 
+                ? humanFlags.map(f => `<div class="list-item danger">${f}</div>`).join('')
+                : '<div class="list-item success">✅ Nenhuma red flag humana detectada</div>';
+
+            // File issues (Cap. 2)
+            const fileIssues = debug.file_format_issues || [];
+            const fiDiv = document.getElementById('fileIssues');
+            if (fileIssues.length) {
+                fiDiv.innerHTML = fileIssues.map(i => 
+                    `<div class="list-item ${i.severity === 'critical' ? 'danger' : 'warning'}">${i.message}</div>`
+                ).join('');
+            } else {
+                fiDiv.innerHTML = '<div class="list-item success">✅ Nenhum problema de formato detectado</div>';
+            }
+
+            // White-fonting (Cap. 6)
+            const wf = debug.white_fonting || [];
+            const wfDiv = document.getElementById('whiteFonting');
+            if (wf.length) {
+                wfDiv.innerHTML = wf.map(w => `<div class="badge badge-danger">${w.type}: ${w.message}</div>`).join('');
+            } else {
+                wfDiv.innerHTML = '<span style="color:var(--text-muted)">Nenhum white-fonting detectado</span>';
+            }
+
+            // Copied bullets (Cap. 6)
+            const cb = debug.copied_bullets || [];
+            const cbDiv = document.getElementById('copiedBullets');
+            if (cb.length) {
+                cbDiv.innerHTML = cb.map(c => `<div class="list-item danger">${c.similarity}% similar: "${c.bullet_preview}"</div>`).join('');
+            } else {
+                cbDiv.innerHTML = '<span style="color:var(--text-muted)">Nenhum bullet copiado detectado</span>';
+            }
+
+            // Too good (Cap. 6)
+            const tg = debug.too_good_to_be_true || [];
+            const tgDiv = document.getElementById('tooGood');
+            if (tg.length) {
+                tgDiv.innerHTML = tg.map(t => `<div class="list-item warning">${t.message}</div>`).join('');
+            } else {
+                tgDiv.innerHTML = '<span style="color:var(--text-muted)">Perfil parece consistente</span>';
+            }
+
+            // Code-switching (Cap. 9)
+            const cs = debug.code_switching_issues || [];
+            const csDiv = document.getElementById('codeSwitching');
+            if (cs.length) {
+                csDiv.innerHTML = cs.map(c => `<div class="list-item warning">[${c.section}] ${c.message}</div>`).join('');
+            } else {
+                csDiv.innerHTML = '<div class="list-item success">✅ Code-switching adequado (PT contexto + EN tecnologias)</div>';
+            }
+        }
+
+        function animateTimer() {
+            const timer = document.getElementById('scanTimer');
+            let t = 10.0;
+            timer.textContent = t.toFixed(1) + 's';
+            const interval = setInterval(() => {
+                t -= 0.1;
+                if (t <= 0) { t = 0; clearInterval(interval); }
+                timer.textContent = t.toFixed(1) + 's';
+            }, 100);
+        }
+    </script>
+</body>
+</html>
