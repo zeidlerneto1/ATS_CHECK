@@ -106,11 +106,13 @@ JOBS = {
     ),
 }
 
-
 @app.route("/")
 def index():
     return render_template("index.html")
 
+@app.route("/logs")
+def logs_page():
+    return render_template("logs.html")
 
 @app.route("/api/jobs")
 def get_jobs():
@@ -127,7 +129,6 @@ def get_jobs():
             "responsibilities": job.responsibilities,
         }
     return jsonify(jobs_data)
-
 
 def _parse_job_from_request() -> JobDescription:
     """Extrai JobDescription do request (preset ou custom)"""
@@ -155,7 +156,7 @@ def _parse_job_from_request() -> JobDescription:
     # Mapeia valores antigos para novos
     edu_map = {
         "tecnico": "tecnico",
-        "tecnologo": "tecnologo", 
+        "tecnologo": "tecnologo",
         "graduacao": "graduacao",
         "mestrado": "mestrado",
         "phd": "phd"
@@ -174,7 +175,6 @@ def _parse_job_from_request() -> JobDescription:
         education_level=edu_level,
         responsibilities=responsibilities
     )
-
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
@@ -213,6 +213,9 @@ def analyze():
 
     result = engine.analyze(filepath, job, log_callback)
 
+    # Dados extras para o modo debug/logger
+    extra = engine.get_debug_data() if hasattr(engine, 'get_debug_data') else {}
+
     return jsonify({
         "success": True,
         "job": {
@@ -237,9 +240,9 @@ def analyze():
         },
         "logs": logs_buffer,
         "raw_text_preview": result.raw_text[:500] + "..." if len(result.raw_text) > 500 else result.raw_text,
+        "raw_text": result.raw_text,
+        "debug": extra,
     })
-
-
 
 @app.route("/api/scrape", methods=["POST"])
 def scrape_job():
@@ -256,8 +259,6 @@ def scrape_job():
     result = scraper.scrape(url)
     return jsonify(result)
 
-
-
 @app.route("/api/parse-text", methods=["POST"])
 def parse_job_text():
     """Extrai dados de vaga a partir de texto colado"""
@@ -272,7 +273,6 @@ def parse_job_text():
     parser = JobTextParser()
     result = parser.parse(text)
     return jsonify(result)
-
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)

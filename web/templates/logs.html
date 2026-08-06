@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATS Logger - Debug Mode</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/logs.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🕵️ ATS Logger</h1>
+            <p>Modo debug — veja exatamente como o ATS lê e processa seu CV</p>
+            <a href="/" class="btn-back">← Voltar ao Analisador</a>
+        </header>
+
+        <section class="upload-section">
+            <div class="upload-area" id="dropZone">
+                <input type="file" id="cvFile" accept=".pdf,.docx" hidden>
+                <div class="upload-content">
+                    <div class="upload-icon">📄</div>
+                    <p><strong>Arraste seu CV aqui</strong> ou clique para selecionar</p>
+                    <span class="upload-hint">PDF ou DOCX (máx. 16MB)</span>
+                </div>
+            </div>
+
+            <div class="job-selector">
+                <label>🎯 Escolha uma vaga para testar:</label>
+                <select id="jobSelect">
+                    <option value="fullstack_junior">Desenvolvedor Full Stack Júnior/Pleno</option>
+                    <option value="backend_senior">Desenvolvedor Backend Sênior</option>
+                    <option value="devops">DevOps Engineer</option>
+                    <option value="frontend_react">Frontend React Developer</option>
+                    <option value="data_engineer">Data Engineer</option>
+                </select>
+            </div>
+
+            <button id="analyzeBtn" class="btn-analyze" disabled>
+                <span class="btn-text">🔍 Analisar e Ver Logs</span>
+                <span class="btn-loader hidden">⏳ Processando...</span>
+            </button>
+        </section>
+
+        <section id="resultsArea" class="results hidden">
+            <div class="results-header">
+                <h2>📊 Resultado da Análise</h2>
+                <div class="score-badge" id="scoreBadge">--</div>
+            </div>
+
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="pipeline">🔄 Pipeline</button>
+                <button class="tab-btn" data-tab="raw">📄 Texto Bruto</button>
+                <button class="tab-btn" data-tab="entities">🧬 Entidades</button>
+                <button class="tab-btn" data-tab="keywords">🎯 Keywords</button>
+                <button class="tab-btn" data-tab="scores">📊 Scores</button>
+                <button class="tab-btn" data-tab="logs">📝 Logs Brutos</button>
+            </nav>
+
+            <!-- Tab: Pipeline -->
+            <div id="tab-pipeline" class="tab-content active">
+                <div class="pipeline-timeline" id="pipelineTimeline"></div>
+            </div>
+
+            <!-- Tab: Texto Bruto -->
+            <div id="tab-raw" class="tab-content">
+                <div class="raw-meta" id="rawMeta"></div>
+                <pre class="raw-text" id="rawText"></pre>
+            </div>
+
+            <!-- Tab: Entidades -->
+            <div id="tab-entities" class="tab-content">
+                <div class="entities-grid" id="entitiesGrid"></div>
+                <h3>📑 Seções Detectadas</h3>
+                <div class="sections-list" id="sectionsList"></div>
+            </div>
+
+            <!-- Tab: Keywords -->
+            <div id="tab-keywords" class="tab-content">
+                <div class="keywords-summary" id="keywordsSummary"></div>
+                <div class="keywords-tables" id="keywordsTables"></div>
+            </div>
+
+            <!-- Tab: Scores -->
+            <div id="tab-scores" class="tab-content">
+                <div class="scores-breakdown" id="scoresBreakdown"></div>
+                <div class="recommendations" id="recommendations"></div>
+            </div>
+
+            <!-- Tab: Logs Brutos -->
+            <div id="tab-logs" class="tab-content">
+                <pre class="logs-raw" id="logsRaw"></pre>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+</body>
+</html>

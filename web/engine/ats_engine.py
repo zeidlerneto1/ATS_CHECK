@@ -13,7 +13,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from engine.parsers import DocumentParser
 from engine.logger import ATSLogger
 
-
 @dataclass
 class JobDescription:
     title: str
@@ -23,7 +22,6 @@ class JobDescription:
     required_experience_years: int = 0
     education_level: str = ""
     responsibilities: List[str] = field(default_factory=list)
-
 
 @dataclass
 class ATSResult:
@@ -43,7 +41,6 @@ class ATSResult:
     logs: List[Dict]
     raw_text: str = ""
 
-
 class ATSEngine:
     """Motor ATS com análise completa e logs em tempo real"""
 
@@ -60,6 +57,18 @@ class ATSEngine:
             "sql": ["mysql", "postgresql", "sqlite"],
             "git": ["github", "gitlab"],
         }
+        # Dados de debug acumulados durante a análise
+        self._debug_data = {
+            "contact": {},
+            "parsed_metadata": {},
+            "keyword_details": {},
+            "score_components": {},
+            "experience_years_detected": None,
+            "education_level_detected": 0,
+        }
+
+    def get_debug_data(self) -> Dict[str, Any]:
+        return self._debug_data
 
     def analyze(self, file_path: str, job: JobDescription, log_callback=None) -> ATSResult:
         self.logger = ATSLogger()
@@ -67,13 +76,24 @@ class ATSEngine:
             self.logger.add_callback(log_callback)
 
         self.parser.logger = self.logger
+        self._debug_data = {
+            "contact": {},
+            "parsed_metadata": {},
+            "keyword_details": {},
+            "score_components": {},
+            "experience_years_detected": None,
+            "education_level_detected": 0,
+        }
 
         # INGEST + PARSE
         parsed = self.parser.parse(file_path)
         raw_text = parsed["raw_text"]
+        self._debug_data["parsed_metadata"] = parsed.get("metadata", {})
+        self._debug_data["parsed_metadata"]["file_type"] = parsed.get("file_type", "unknown")
 
         # EXTRACT
         contact = self._extract_contact(raw_text)
+        self._debug_data["contact"] = contact
         self.logger.candidate_name = contact.get("name", "Desconhecido")
 
         self.logger.log("EXTRACT", "Entidades extraídas", {
@@ -86,6 +106,7 @@ class ATSEngine:
         # MATCH
         all_keywords = job.required_skills + job.preferred_skills
         matched, missing, match_details = self._match_keywords(raw_text, all_keywords)
+        self._debug_data["keyword_details"] = match_details
         keyword_density = self._calc_keyword_density(raw_text, all_keywords)
 
         # SCORE
@@ -103,6 +124,7 @@ class ATSEngine:
             "semantic": sem_score
         }
         overall = self._calc_overall(scores)
+        self._debug_data["score_components"] = {k: v["score"] for k, v in scores.items()}
 
         # FILTER
         red_flags = self._detect_red_flags(raw_text, parsed, contact)
@@ -147,8 +169,8 @@ class ATSEngine:
             contact["email"] = email_match.group(0)
 
         phone_patterns = [
-            r'(?:\+55\s?)?(?:\(?\d{2}\)?\s?)?(?:\d{4,5}[-.\s]?\d{4})',
-            r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
+            r'(?:\+55\s?)?(?:\(?(\d{2})\)?\s?)?(?:\d{4,5}[-.\s]?\d{4})',
+            r'\+?\d{1,3}[-.\s]?\(?(\d{3})\)?[-.\s]?\d{3}[-.\s]?\d{4}',
         ]
         for pattern in phone_patterns:
             match = re.search(pattern, text)
@@ -169,23 +191,31 @@ class ATSEngine:
         for kw in keywords:
             kw_lower = kw.lower().strip()
             found = False
+            match_type = "none"
+            freq = 0
 
             if kw_lower in text_lower:
                 found = True
+                match_type = "exact"
+                freq = text_lower.count(kw_lower)
             elif re.search(r'\b' + re.escape(kw_lower) + r'\b', text_lower):
                 found = True
+                match_type = "boundary"
+                freq = len(re.findall(r'\b' + re.escape(kw_lower) + r'\b', text_lower))
             elif kw_lower in self.synonyms:
                 for syn in self.synonyms[kw_lower]:
                     if syn in text_lower:
                         found = True
+                        match_type = "synonym"
+                        freq = text_lower.count(syn)
                         break
 
             if found:
                 matched.append(kw)
-                details[kw] = {"found": True, "freq": text_lower.count(kw_lower)}
+                details[kw] = {"found": True, "type": match_type, "freq": freq}
             else:
                 missing.append(kw)
-                details[kw] = {"found": False}
+                details[kw] = {"found": False, "type": "none", "freq": 0}
 
         self.logger.log("MATCH", f"Keywords: {len(matched)}/{len(keywords)} match", {
             "matched": matched, "missing": missing[:10]
@@ -220,6 +250,8 @@ class ATSEngine:
                 years = int(m.group(1))
                 break
 
+        self._debug_data["experience_years_detected"] = years
+
         if years and required:
             score = 100 if years >= required else max(20, (years/required)*100)
         else:
@@ -231,8 +263,8 @@ class ATSEngine:
     def _calc_education_score(self, text: str, required: str):
         levels = {
             "ensino medio": 1, "high school": 1,
-            "tecnico": 1, "technical": 1,  # técnico é nível médio, abaixo de superior
-            "tecnologo": 2, "tecnólogo": 2,  # tecnólogo = superior (nível 2)
+            "tecnico": 1, "technical": 1,
+            "tecnologo": 2, "tecnólogo": 2,
             "graduacao": 3, "bacharel": 3, "bachelor": 3, "bs": 3, "ba": 3, "licenciatura": 3,
             "pos": 4, "mestrado": 4, "master": 4, "ms": 4,
             "doutorado": 5, "phd": 5, "doctorate": 5
@@ -243,6 +275,8 @@ class ATSEngine:
         for term, val in levels.items():
             if term in text_lower:
                 max_lvl = max(max_lvl, val)
+
+        self._debug_data["education_level_detected"] = max_lvl
 
         score = 100 if max_lvl >= req else (70 if max_lvl == req-1 else 40 if max_lvl > 0 else 0)
         self.logger.log("SCORE", "Education score", {"score": score, "level": max_lvl, "required": req})
@@ -264,13 +298,17 @@ class ATSEngine:
     def _calc_semantic_score(self, text: str, responsibilities: List[str]):
         text_lower = text.lower()
         matches = 0
+        resp_details = []
         for resp in responsibilities:
             words = re.findall(r'\b[a-z]{4,}\b', resp.lower())
             important = [w for w in words if w not in {"deve", "ser", "para", "will", "must"}]
             found = sum(1 for w in important if w in text_lower)
-            if important and found / len(important) > 0.3:
+            ratio = found / len(important) if important else 0
+            if ratio > 0.3:
                 matches += 1
+            resp_details.append({"resp": resp[:60], "ratio": round(ratio, 2), "matched": ratio > 0.3})
 
+        self._debug_data["semantic_details"] = resp_details
         score = (matches / len(responsibilities) * 100) if responsibilities else 50
         self.logger.log("SCORE", "Semantic score", {"score": round(score, 1), "matched": matches})
         return {"score": round(score, 1), "weight": 0.15}
