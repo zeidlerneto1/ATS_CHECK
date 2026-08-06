@@ -117,6 +117,67 @@ function handleFile(file) {
 // ===== Analyze =====
 analyzeBtn.addEventListener('click', startAnalysis);
 
+// ===== Scrape Button =====
+const scrapeBtn = document.getElementById('scrapeBtn');
+const jobUrl = document.getElementById('jobUrl');
+
+scrapeBtn.addEventListener('click', async () => {
+    const url = jobUrl.value.trim();
+    if (!url) {
+        alert('Cole a URL da vaga primeiro.');
+        return;
+    }
+
+    scrapeBtn.disabled = true;
+    scrapeBtn.textContent = '⏳ Extraindo...';
+    scrapeBtn.classList.add('loading');
+
+    try {
+        const resp = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+
+        const data = await resp.json();
+
+        if (data.success) {
+            // Preenche formulário
+            customTitle.value = data.title || '';
+            customCompany.value = data.company || '';
+            customExp.value = data.required_experience_years || '0';
+            customEdu.value = data.education_level || 'graduacao';
+            customRequired.value = data.required_skills.join(', ') || '';
+            customPreferred.value = data.preferred_skills.join(', ') || '';
+            customResp.value = data.responsibilities.join('\n') || '';
+
+            // Mostra mensagem de sucesso
+            showScrapeMessage(`✅ Dados extraídos de ${data.source}! ${data.required_skills.length} skills encontradas.`, 'success');
+        } else {
+            showScrapeMessage(`⚠️ ${data.error || 'Não foi possível extrair dados automaticamente. Preencha manualmente.'}`, 'error');
+        }
+    } catch (err) {
+        showScrapeMessage(`❌ Erro: ${err.message}. Preencha manualmente.`, 'error');
+    } finally {
+        scrapeBtn.disabled = false;
+        scrapeBtn.textContent = '🕷️ Extrair Dados';
+        scrapeBtn.classList.remove('loading');
+    }
+});
+
+function showScrapeMessage(msg, type) {
+    // Remove mensagem anterior
+    const old = document.querySelector('.scrape-success, .scrape-error');
+    if (old) old.remove();
+
+    const div = document.createElement('div');
+    div.className = type === 'success' ? 'scrape-success' : 'scrape-error';
+    div.textContent = msg;
+    jobUrl.parentElement.parentElement.appendChild(div);
+
+    setTimeout(() => div.remove(), 8000);
+}
+
 function startAnalysis() {
     if (!currentFile) return;
 

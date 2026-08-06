@@ -3,6 +3,7 @@
 API Flask - ATS Web com streaming de logs e vaga personalizada
 """
 import os
+import re
 import sys
 import json
 import time
@@ -13,6 +14,7 @@ from werkzeug.utils import secure_filename
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from engine.ats_engine import ATSEngine, JobDescription
+from engine.job_scraper import JobScraper
 from engine.logger import ATSLogger
 
 app = Flask(__name__)
@@ -149,6 +151,15 @@ def _parse_job_from_request() -> JobDescription:
 
     exp_years = int(request.form.get("custom_exp", "0") or "0")
     edu_level = request.form.get("custom_edu", "tecnico")
+    # Mapeia valores antigos para novos
+    edu_map = {
+        "tecnico": "tecnico",
+        "tecnologo": "tecnologo", 
+        "graduacao": "graduacao",
+        "mestrado": "mestrado",
+        "phd": "phd"
+    }
+    edu_level = edu_map.get(edu_level, edu_level)
 
     resp_raw = request.form.get("custom_resp", "")
     responsibilities = [r.strip() for r in resp_raw.split("\n") if r.strip()]
@@ -226,6 +237,23 @@ def analyze():
         "logs": logs_buffer,
         "raw_text_preview": result.raw_text[:500] + "..." if len(result.raw_text) > 500 else result.raw_text,
     })
+
+
+
+@app.route("/api/scrape", methods=["POST"])
+def scrape_job():
+    """Extrai dados de uma URL de vaga"""
+    data = request.get_json()
+    if not data or "url" not in data:
+        return jsonify({"success": False, "error": "URL não fornecida"}), 400
+
+    url = data["url"].strip()
+    if not url.startswith(("http://", "https://")):
+        return jsonify({"success": False, "error": "URL inválida"}), 400
+
+    scraper = JobScraper()
+    result = scraper.scrape(url)
+    return jsonify(result)
 
 
 if __name__ == "__main__":

@@ -52,7 +52,16 @@
 
                 <!-- Custom Job -->
                 <div class="job-panel" id="customPanel">
-                    <div class="form-grid">
+                    <div class="form-group full-width">
+                            <label for="jobUrl">🔗 URL da Vaga <small>(LinkedIn, Glassdoor, Indeed - opcional)</small></label>
+                            <div class="url-input-group">
+                                <input type="url" id="jobUrl" placeholder="https://www.linkedin.com/jobs/view/...">
+                                <button type="button" id="scrapeBtn" class="btn-scrape">🕷️ Extrair Dados</button>
+                            </div>
+                            <small class="help-text">Cole o link da vaga e clique em "Extrair Dados" para preencher automaticamente</small>
+                        </div>
+
+                        <div class="form-grid">
                         <div class="form-group">
                             <label for="customTitle">📋 Título da Vaga</label>
                             <input type="text" id="customTitle" placeholder="Ex: Desenvolvedor Full Stack Pleno">
@@ -68,10 +77,11 @@
                         <div class="form-group">
                             <label for="customEdu">🎓 Nível de Educação</label>
                             <select id="customEdu">
-                                <option value="tecnico">Técnico/Tecnólogo</option>
-                                <option value="graduacao">Graduação (Bacharel)</option>
-                                <option value="mestrado">Mestrado</option>
-                                <option value="phd">Doutorado</option>
+                                <option value="tecnico">Técnico (Ensino Médio/Técnico)</option>
+                                <option value="tecnologo">Tecnólogo (Superior - 2 a 3 anos)</option>
+                                <option value="graduacao">Bacharel/Licenciatura (Superior - 4+ anos)</option>
+                                <option value="mestrado">Mestrado/Pós-graduação</option>
+                                <option value="phd">Doutorado/PhD</option>
                             </select>
                         </div>
                     </div>
