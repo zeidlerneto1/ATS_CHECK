@@ -5,11 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🛠️ CV Builder ATS — Monte seu CV otimizado</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cv_builder.css') }}">
+<style>
+        .main-nav { display: flex; justify-content: center; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+        .nav-link { display: inline-block; padding: 10px 20px; border-radius: 8px; text-decoration: none;
+                    font-weight: 500; font-size: 0.95rem; transition: all 0.2s;
+                    background: rgba(99,102,241,0.1); color: #c7d2fe; border: 1px solid rgba(99,102,241,0.2); }
+        .nav-link:hover { background: rgba(99,102,241,0.2); transform: translateY(-1px); }
+        .nav-link.active { background: #6366f1; color: #fff; border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+        @media (max-width: 480px) { .main-nav { flex-direction: column; align-items: center; } .nav-link { width: 80%; text-align: center; } }
+    </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
             <h1>🛠️ CV Builder ATS</h1>
+<nav class="main-nav">
+                <a href="/" class="nav-link">📊 Analisador</a>
+                <a href="/logs" class="nav-link">🔍 Logger/Debug</a>
+                <a href="/cv-builder" class="nav-link active">📝 CV Builder</a>
+            </nav>
             <p>Construa seu currículo passo a passo seguindo as regras do manual ATS Engineer</p>
             <a href="/" class="btn-back">← Voltar ao Analisador</a>
         </header>
