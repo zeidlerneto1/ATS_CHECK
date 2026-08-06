@@ -804,22 +804,10 @@ class ATSEngine:
                 if most_common[1] > len(filtered_words) * 0.15:  # >15% de uma palavra
                     flags.append(f"⚠️ Keyword stuffing em '{sec_name}': '{most_common[0]}' repetido {most_common[1]}x")
 
-        # Cap. 6: White-fonting
+        # Cap. 6: White-fonting (detectado também em analyze)
         white_font = self._detect_white_fonting(text, {})
         if white_font:
             flags.append(f"🚨 White-fonting detectado: {len(white_font)} ocorrência(s) de texto escondido")
-
-        # Cap. 6: Bullets copiados da vaga
-        if copied:
-            flags.append(f"🚨 {len(copied)} bullet(s) copiado(s) da descrição da vaga — red flag para recrutadores")
-
-        # Cap. 6: Experiência "muito boa para ser verdade"
-        if too_good:
-            flags.append(f"⚠️ Perfil suspeito: {len(too_good)} indicação(ões) de 'muito bom para ser verdade'")
-
-        # Cap. 9: Code-switching mal feito
-        if cs_issues:
-            flags.append(f"⚠️ Code-switching mal feito detectado em {len(cs_issues)} seção(ões)")
 
         return flags
 
