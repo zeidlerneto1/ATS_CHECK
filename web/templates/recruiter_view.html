@@ -80,6 +80,25 @@
         .attention-box.ignores li::before { content: "✗ "; color: var(--text-muted); }
 
         .hidden { display: none; }
+
+        /* Logs Section */
+        .logs-section { margin-top: 30px; }
+        .pipeline-timeline { display: flex; flex-direction: column; gap: 12px; }
+        .pipeline-step { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .pipeline-step.warn { border-left: 3px solid var(--warning); }
+        .pipeline-step.error { border-left: 3px solid var(--danger); }
+        .step-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(99,102,241,0.05); border-bottom: 1px solid var(--border); }
+        .step-icon { font-size: 1.2rem; }
+        .step-title { flex: 1; font-weight: 600; font-size: 0.95rem; }
+        .step-time { font-size: 0.8rem; color: var(--text-muted); }
+        .step-body { padding: 12px 16px; font-size: 0.9rem; }
+        .step-body pre { background: #0f172a; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; color: #e2e8f0; margin-top: 6px; }
+        .log-entry { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .log-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .log-severity { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+        .log-severity.WARN { background: var(--warning-light); color: var(--warning); }
+        .log-severity.ERROR { background: var(--danger-light); color: var(--danger); }
+        .log-severity.INFO { background: var(--info-light); color: var(--info); }
         .loading { text-align: center; padding: 40px; color: var(--text-muted); }
         .loading .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -199,6 +218,10 @@
             <!-- Cap. 9: Code-Switching -->
             <div class="section-title"><span class="emoji">🌐</span>Code-Switching (Cap. 9)</div>
             <div id="codeSwitching"></div>
+
+            <!-- Logs do ATS -->
+            <div class="section-title"><span class="emoji">📋</span>Logs do ATS (Pipeline Completo)</div>
+            <div id="logsContainer"></div>
         </div>
     </div>
 
@@ -320,6 +343,9 @@
             } else {
                 csDiv.innerHTML = '<div class="list-item success">✅ Code-switching adequado (PT contexto + EN tecnologias)</div>';
             }
+
+            // Logs
+            renderLogs(data);
         }
 
         function animateTimer() {
@@ -331,6 +357,52 @@
                 if (t <= 0) { t = 0; clearInterval(interval); }
                 timer.textContent = t.toFixed(1) + 's';
             }, 100);
+        }
+
+        function renderLogs(data) {
+            const container = document.getElementById('logsContainer');
+            const logs = data.logs || [];
+
+            const stages = ['INGEST','PARSE','EXTRACT','MATCH','SCORE','FILTER','DECISION'];
+            const stageLogs = {};
+            logs.forEach(l => { if (!stageLogs[l.stage]) stageLogs[l.stage] = []; stageLogs[l.stage].push(l); });
+
+            const titles = { 
+                INGEST: '📥 Ingestão', PARSE: '🔍 Parsing', EXTRACT: '🧬 Extração',
+                MATCH: '🎯 Matching', SCORE: '📊 Scoring', FILTER: '🚧 Filtros', DECISION: '✅ Decisão' 
+            };
+
+            let html = '<div class="pipeline-timeline">';
+            stages.forEach(stage => {
+                const entries = stageLogs[stage] || [];
+                let bodyHtml = '';
+                entries.forEach(e => {
+                    bodyHtml += `<div class="log-entry">`;
+                    bodyHtml += `<strong>${e.action}</strong>`;
+                    if (e.severity !== 'INFO') bodyHtml += ` <span class="log-severity ${e.severity}">${e.severity}</span>`;
+                    bodyHtml += `<pre>${JSON.stringify(e.details, null, 2)}</pre>`;
+                    bodyHtml += `</div>`;
+                });
+
+                const hasWarn = entries.some(e => e.severity === 'WARN');
+                const hasError = entries.some(e => e.severity === 'ERROR');
+                let stepClass = 'pipeline-step';
+                if (hasError) stepClass += ' error';
+                else if (hasWarn) stepClass += ' warn';
+
+                html += `
+                    <div class="${stepClass}">
+                        <div class="step-header">
+                            <span class="step-icon">${titles[stage]?.split(' ')[0] || '•'}</span>
+                            <span class="step-title">${titles[stage] || stage}</span>
+                            <span class="step-time">${entries.length} log(s)</span>
+                        </div>
+                        <div class="step-body">${bodyHtml || '<em style="color:var(--text-muted)">Nenhum log nesta etapa</em>'}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
         }
     </script>
 </body>
