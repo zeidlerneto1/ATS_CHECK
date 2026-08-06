@@ -390,6 +390,15 @@ class ATSEngine:
             r'experi[êe]ncia\s+de\s+(\d+)\s*anos?',
             r'total\s*[:\s]*\s*(\d+\.\d+)\s*anos?',
             r'total\s*[:\s]*\s*(\d+)\s*anos?',
+            # Padrões grudados (ex: "1.5+yearsoffull-stack", "1.5yearsofexperience")
+            r'(\d+\.\d+)[+\-]?\s*years?\s*of\s*experience',
+            r'(\d+)[+\-]?\s*years?\s*of\s*experience',
+            r'(\d+\.\d+)[+\-]?\s*years?\s*of\s*\w+',
+            r'(\d+)[+\-]?\s*years?\s*of\s*\w+',
+            r'(\d+\.\d+)[+\-]?\s*anos?\s*de\s*\w+',
+            r'(\d+)[+\-]?\s*anos?\s*de\s*\w+',
+            r'(\d+\.\d+)\s*anos?\s*de\s*experi[êe]ncia',
+            r'(\d+)\s*anos?\s*de\s*experi[êe]ncia',
         ]
         years_text = None
         for p in patterns:
@@ -552,15 +561,28 @@ class ATSEngine:
         if parsed["file_type"] == "pdf" and parsed["metadata"].get("is_image_pdf"):
             flags.append("🚨 PDF é imagem - texto não extraível")
 
-        # Detectar keyword stuffing por seção
+        # Detectar keyword stuffing por seção (ignorando stop words)
+        STOP_WORDS = {
+            "a", "o", "as", "os", "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas",
+            "por", "para", "com", "sem", "sob", "sobre", "entre", "ante", "após", "até", "desde",
+            "e", "ou", "mas", "nem", "que", "se", "como", "quando", "onde", "porque", "pois",
+            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
+            "by", "from", "up", "about", "into", "through", "during", "before", "after", "above",
+            "below", "between", "among", "within", "without", "against", "under", "over", "via",
+            "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
+            "did", "will", "would", "could", "should", "may", "might", "must", "can", "shall",
+            "i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them",
+            "my", "your", "his", "her", "its", "our", "their", "this", "that", "these", "those",
+        }
         for sec_name, sec_content in sections.items():
             words = re.findall(r'\b\w+\b', sec_content.lower())
-            if len(words) > 0:
-                # Verificar repetição excessiva de qualquer palavra
+            # Filtrar stop words
+            filtered_words = [w for w in words if w not in STOP_WORDS and len(w) > 2]
+            if len(filtered_words) > 0:
                 from collections import Counter
-                word_counts = Counter(words)
+                word_counts = Counter(filtered_words)
                 most_common = word_counts.most_common(1)[0]
-                if most_common[1] > len(words) * 0.15:  # >15% de uma palavra
+                if most_common[1] > len(filtered_words) * 0.15:  # >15% de uma palavra
                     flags.append(f"⚠️ Keyword stuffing em '{sec_name}': '{most_common[0]}' repetido {most_common[1]}x")
 
         return flags

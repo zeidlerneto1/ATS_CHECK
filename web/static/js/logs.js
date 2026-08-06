@@ -184,19 +184,19 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = `
             <div class="entity-card">
                 <div class="entity-label">Nome</div>
-                <div class="entity-value ${contact.name ? '' : 'missing'}">${contact.name || 'Não detectado'}</div>
+                <div class="entity-value ${mergedContact.name ? '' : 'missing'}">${mergedContact.name || 'Não detectado'}</div>
             </div>
             <div class="entity-card">
                 <div class="entity-label">Email</div>
-                <div class="entity-value ${contact.email ? '' : 'missing'}">${contact.email || 'Não detectado'}</div>
+                <div class="entity-value ${mergedContact.email ? '' : 'missing'}">${mergedContact.email || 'Não detectado'}</div>
             </div>
             <div class="entity-card">
                 <div class="entity-label">Telefone</div>
-                <div class="entity-value ${contact.phone ? '' : 'missing'}">${contact.phone || 'Não detectado'}</div>
+                <div class="entity-value ${mergedContact.phone ? '' : 'missing'}">${mergedContact.phone || 'Não detectado'}</div>
             </div>
             <div class="entity-card">
                 <div class="entity-label">LinkedIn</div>
-                <div class="entity-value ${contact.linkedin ? '' : 'missing'}">${contact.linkedin || 'Não detectado'}</div>
+                <div class="entity-value ${mergedContact.linkedin ? '' : 'missing'}">${mergedContact.linkedin || 'Não detectado'}</div>
             </div>
         `;
 
@@ -309,11 +309,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Red flags
         if (result.red_flags && result.red_flags.length) {
-            html += '<h4 style="margin:20px 0 12px;">🚩 Red Flags</h4>';
+            let flagsHtml = '<h4 style="margin:20px 0 12px;">🚩 Red Flags</h4>';
             result.red_flags.forEach(f => {
-                html += `<div class="red-flag">${f}</div>`;
+                flagsHtml += `<div class="red-flag">${f}</div>`;
             });
-            breakdown.innerHTML += html;
+            breakdown.innerHTML = breakdown.innerHTML + flagsHtml;
         }
 
         // Recommendations

@@ -246,8 +246,8 @@ def analyze():
         "raw_text": result.raw_text,
         "debug": {
             **debug,
-            "metadata": parsed.get("metadata", {}),
-            "file_type": parsed.get("file_type", "unknown"),
+            "metadata": debug.get("parsed_metadata", {}),
+            "file_type": debug.get("file_type", "unknown"),
         },
     })
 
