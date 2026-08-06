@@ -1310,10 +1310,23 @@ class ATSEngine:
             view["attention_grabbers"].append(f"{metrics_count} bullet(s) com métricas quantificáveis")
 
         # 3. EMPRESA RECONHECIDA: marcas capturam atenção
+        # Só buscar na seção de experiência (não no CV inteiro — evita confundir skill com empresa)
+        exp_section_lower = exp_section.lower() if exp_section else ""
         for company in self.RECOGNIZED_COMPANIES:
-            if company.lower() in text_lower:
-                view["has_recognized_company"] = True
-                view["recognized_companies_found"].append(company)
+            company_lower = company.lower().strip()
+            # Padrões que indicam empresa como local de trabalho:
+            # "Empresa X | Cargo", "Cargo na Empresa X", "Empresa X - Cargo"
+            patterns = [
+                rf'\b{re.escape(company_lower)}\b\s*(?:\||\-|\—|\–|\bat\b|\bna\b|\bem\b)',
+                rf'(?:\bat\b|\bna\b|\bem\b|\bpara\b)\s+\b{re.escape(company_lower)}\b',
+            ]
+            for pattern in patterns:
+                if re.search(pattern, exp_section_lower):
+                    view["has_recognized_company"] = True
+                    view["recognized_companies_found"].append(company)
+                    break
+            if view["has_recognized_company"]:
+                break
 
         if view["has_recognized_company"]:
             view["attention_grabbers"].append(f"Empresa reconhecida: {view['recognized_companies_found'][0]}")
