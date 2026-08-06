@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from engine.ats_engine import ATSEngine, JobDescription
 from engine.job_scraper import JobScraper
+from engine.job_text_parser import JobTextParser
 from engine.logger import ATSLogger
 
 app = Flask(__name__)
@@ -253,6 +254,23 @@ def scrape_job():
 
     scraper = JobScraper()
     result = scraper.scrape(url)
+    return jsonify(result)
+
+
+
+@app.route("/api/parse-text", methods=["POST"])
+def parse_job_text():
+    """Extrai dados de vaga a partir de texto colado"""
+    data = request.get_json()
+    if not data or "text" not in data:
+        return jsonify({"success": False, "error": "Texto não fornecido"}), 400
+
+    text = data["text"].strip()
+    if len(text) < 50:
+        return jsonify({"success": False, "error": "Texto muito curto. Cole a descrição completa da vaga."}), 400
+
+    parser = JobTextParser()
+    result = parser.parse(text)
     return jsonify(result)
 
 

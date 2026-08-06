@@ -53,12 +53,22 @@
                 <!-- Custom Job -->
                 <div class="job-panel" id="customPanel">
                     <div class="form-group full-width">
-                            <label for="jobUrl">🔗 URL da Vaga <small>(LinkedIn, Glassdoor, Indeed - opcional)</small></label>
+                            <label for="jobText">📝 Cole a descrição da vaga <small>(copie e cole do LinkedIn, Glassdoor, etc.)</small></label>
+                            <textarea id="jobText" rows="8" placeholder="Desenvolvedor Full Stack Pleno\n\nSobre a vaga:\nEstamos buscando um desenvolvedor...\n\nRequisitos:\n• Node.js, React, PostgreSQL\n• Docker, Git\n\nDesejável:\n• Kubernetes, AWS\n• TypeScript"></textarea>
+                            <div class="text-actions">
+                                <button type="button" id="parseTextBtn" class="btn-scrape">✨ Extrair Dados do Texto</button>
+                                <span class="or-divider">ou</span>
+                                <button type="button" id="scrapeUrlBtn" class="btn-scrape secondary">🕷️ Extrair da URL</button>
+                            </div>
+                            <small class="help-text">💡 Dica: Copie o texto inteiro da vaga e cole aqui. O ATS extrai automaticamente skills, responsabilidades e requisitos.</small>
+                        </div>
+
+                        <div class="form-group full-width url-field" id="urlField" style="display:none;">
+                            <label for="jobUrl">🔗 URL da Vaga</label>
                             <div class="url-input-group">
                                 <input type="url" id="jobUrl" placeholder="https://www.linkedin.com/jobs/view/...">
-                                <button type="button" id="scrapeBtn" class="btn-scrape">🕷️ Extrair Dados</button>
+                                <button type="button" id="scrapeBtn" class="btn-scrape">Extrair</button>
                             </div>
-                            <small class="help-text">Cole o link da vaga e clique em "Extrair Dados" para preencher automaticamente</small>
                         </div>
 
                         <div class="form-grid">

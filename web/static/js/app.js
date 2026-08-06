@@ -117,26 +117,39 @@ function handleFile(file) {
 // ===== Analyze =====
 analyzeBtn.addEventListener('click', startAnalysis);
 
-// ===== Scrape Button =====
-const scrapeBtn = document.getElementById('scrapeBtn');
+// ===== Parse Text Button =====
+const parseTextBtn = document.getElementById('parseTextBtn');
+const jobText = document.getElementById('jobText');
+const scrapeUrlBtn = document.getElementById('scrapeUrlBtn');
+const urlField = document.getElementById('urlField');
 const jobUrl = document.getElementById('jobUrl');
+const scrapeBtn = document.getElementById('scrapeBtn');
 
-scrapeBtn.addEventListener('click', async () => {
-    const url = jobUrl.value.trim();
-    if (!url) {
-        alert('Cole a URL da vaga primeiro.');
+// Toggle URL field
+scrapeUrlBtn.addEventListener('click', () => {
+    const isHidden = urlField.style.display === 'none';
+    urlField.style.display = isHidden ? 'block' : 'none';
+    scrapeUrlBtn.textContent = isHidden ? '❌ Cancelar URL' : '🕷️ Extrair da URL';
+});
+
+// Parse from text
+parseTextBtn.addEventListener('click', async () => {
+    const text = jobText.value.trim();
+    if (!text || text.length < 50) {
+        alert('Cole a descrição completa da vaga (mínimo 50 caracteres).');
+        jobText.focus();
         return;
     }
 
-    scrapeBtn.disabled = true;
-    scrapeBtn.textContent = '⏳ Extraindo...';
-    scrapeBtn.classList.add('loading');
+    parseTextBtn.disabled = true;
+    parseTextBtn.textContent = '⏳ Analisando texto...';
+    parseTextBtn.classList.add('loading');
 
     try {
-        const resp = await fetch('/api/scrape', {
+        const resp = await fetch('/api/parse-text', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
+            body: JSON.stringify({ text })
         });
 
         const data = await resp.json();
@@ -151,31 +164,74 @@ scrapeBtn.addEventListener('click', async () => {
             customPreferred.value = data.preferred_skills.join(', ') || '';
             customResp.value = data.responsibilities.join('\n') || '';
 
-            // Mostra mensagem de sucesso
-            showScrapeMessage(`✅ Dados extraídos de ${data.source}! ${data.required_skills.length} skills encontradas.`, 'success');
+            showParseMessage(
+                `✅ ${data.raw_skills_found.length} skills detectadas! ` +
+                `${data.required_skills.length} obrigatórias, ${data.preferred_skills.length} desejáveis.`,
+                'success'
+            );
         } else {
-            showScrapeMessage(`⚠️ ${data.error || 'Não foi possível extrair dados automaticamente. Preencha manualmente.'}`, 'error');
+            showParseMessage(`⚠️ ${data.error || 'Não foi possível extrair dados.'}`, 'error');
         }
     } catch (err) {
-        showScrapeMessage(`❌ Erro: ${err.message}. Preencha manualmente.`, 'error');
+        showParseMessage(`❌ Erro: ${err.message}`, 'error');
     } finally {
-        scrapeBtn.disabled = false;
-        scrapeBtn.textContent = '🕷️ Extrair Dados';
-        scrapeBtn.classList.remove('loading');
+        parseTextBtn.disabled = false;
+        parseTextBtn.textContent = '✨ Extrair Dados do Texto';
+        parseTextBtn.classList.remove('loading');
     }
 });
 
-function showScrapeMessage(msg, type) {
-    // Remove mensagem anterior
+// Scrape from URL (fallback)
+scrapeBtn.addEventListener('click', async () => {
+    const url = jobUrl.value.trim();
+    if (!url) {
+        alert('Cole a URL da vaga primeiro.');
+        return;
+    }
+
+    scrapeBtn.disabled = true;
+    scrapeBtn.textContent = '⏳...';
+
+    try {
+        const resp = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+
+        const data = await resp.json();
+
+        if (data.success) {
+            customTitle.value = data.title || '';
+            customCompany.value = data.company || '';
+            customExp.value = data.required_experience_years || '0';
+            customEdu.value = data.education_level || 'graduacao';
+            customRequired.value = data.required_skills.join(', ') || '';
+            customPreferred.value = data.preferred_skills.join(', ') || '';
+            customResp.value = data.responsibilities.join('\n') || '';
+
+            showParseMessage(`✅ Dados extraídos da URL! ${data.required_skills.length} skills encontradas.`, 'success');
+        } else {
+            showParseMessage(`⚠️ URL falhou: ${data.error}. Use o campo de texto acima.`, 'error');
+        }
+    } catch (err) {
+        showParseMessage(`❌ URL falhou. Use o campo de texto.`, 'error');
+    } finally {
+        scrapeBtn.disabled = false;
+        scrapeBtn.textContent = 'Extrair';
+    }
+});
+
+function showParseMessage(msg, type) {
     const old = document.querySelector('.scrape-success, .scrape-error');
     if (old) old.remove();
 
     const div = document.createElement('div');
     div.className = type === 'success' ? 'scrape-success' : 'scrape-error';
     div.textContent = msg;
-    jobUrl.parentElement.parentElement.appendChild(div);
+    jobText.parentElement.appendChild(div);
 
-    setTimeout(() => div.remove(), 8000);
+    setTimeout(() => div.remove(), 10000);
 }
 
 function startAnalysis() {

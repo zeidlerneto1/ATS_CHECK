@@ -495,3 +495,27 @@ footer { text-align: center; padding: 2rem; color: var(--text-secondary); font-s
     font-size: 0.85rem;
     color: var(--danger);
 }
+
+/* ===== TEXT ACTIONS ===== */
+.text-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+.or-divider {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+.btn-scrape.secondary {
+    background: linear-gradient(135deg, #64748b, #475569);
+    font-size: 0.85rem;
+    padding: 0.6rem 1rem;
+}
+.btn-scrape.secondary:hover {
+    box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
+}
+.url-field {
+    animation: fadeIn 0.3s ease;
+}
