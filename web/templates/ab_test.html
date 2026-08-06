@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 A/B Test - Comparar 2 CVs | ATS Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .main-nav { display: flex; justify-content: center; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+        .nav-link { display: inline-block; padding: 10px 20px; border-radius: 8px; text-decoration: none;
+                    font-weight: 500; font-size: 0.95rem; transition: all 0.2s;
+                    background: rgba(99,102,241,0.1); color: #c7d2fe; border: 1px solid rgba(99,102,241,0.2); }
+        .nav-link:hover { background: rgba(99,102,241,0.2); transform: translateY(-1px); }
+        .nav-link.active { background: #6366f1; color: #fff; border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+        @media (max-width: 480px) { .main-nav { flex-direction: column; align-items: center; } .nav-link { width: 80%; text-align: center; } }
+
+        .ab-container { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+        @media (max-width: 768px) { .ab-container { grid-template-columns: 1fr; } }
+
+        .cv-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .cv-box h3 { margin-bottom: 12px; color: var(--accent); }
+        .cv-box.dragover { border-color: var(--accent); background: rgba(99,102,241,0.05); }
+
+        .winner-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; }
+        .winner-badge.winner { background: var(--success); color: #fff; }
+        .winner-badge.loser { background: var(--danger); color: #fff; }
+        .winner-badge.tie { background: var(--warning); color: #000; }
+
+        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .comparison-table th, .comparison-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        .comparison-table th { color: var(--text-muted); font-weight: 500; font-size: 0.85rem; }
+        .comparison-table td { font-size: 0.95rem; }
+        .comparison-table .score-a { color: #818cf8; font-weight: 600; }
+        .comparison-table .score-b { color: #f472b6; font-weight: 600; }
+        .comparison-table .diff { font-size: 0.8rem; color: var(--text-muted); }
+        .comparison-table tr.highlight { background: rgba(99,102,241,0.05); }
+
+        .vs-divider { display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: var(--accent); margin: 16px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 A/B Test de CVs</h1>
+            <p>Compare duas versões do seu CV na mesma vaga</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">📊 Analisador</a>
+                <a href="/logs" class="nav-link">🔍 Logger/Debug</a>
+                <a href="/cv-builder" class="nav-link">📝 CV Builder</a>
+                <a href="/ab-test" class="nav-link active">🧪 A/B Test</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <h2>Selecione a Vaga</h2>
+                <div class="job-selector">
+                    <select id="jobSelect">
+                        <option value="fullstack_junior">Desenvolvedor Full Stack Júnior/Pleno</option>
+                        <option value="backend_senior">Desenvolvedor Backend Sênior</option>
+                        <option value="devops">DevOps Engineer</option>
+                        <option value="frontend_react">Frontend React Developer</option>
+                        <option value="data_engineer">Data Engineer</option>
+                    </select>
+                </div>
+
+                <div class="ab-container">
+                    <div class="cv-box" id="dropA">
+                        <h3>📄 Versão A</h3>
+                        <div class="drop-zone" id="zoneA">
+                            <p>Arraste seu CV A aqui ou clique para selecionar</p>
+                            <input type="file" id="fileA" accept=".pdf,.docx" hidden>
+                        </div>
+                        <div id="infoA" style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);"></div>
+                    </div>
+
+                    <div class="cv-box" id="dropB">
+                        <h3>📄 Versão B</h3>
+                        <div class="drop-zone" id="zoneB">
+                            <p>Arraste seu CV B aqui ou clique para selecionar</p>
+                            <input type="file" id="fileB" accept=".pdf,.docx" hidden>
+                        </div>
+                        <div id="infoB" style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);"></div>
+                    </div>
+                </div>
+
+                <button id="compareBtn" class="btn-primary" style="margin-top:24px;width:100%;" disabled>
+                    🧪 Comparar CVs
+                </button>
+            </section>
+
+            <section id="results" style="display:none;margin-top:32px;">
+                <div class="vs-divider">⚡ RESULTADO ⚡</div>
+
+                <div style="text-align:center;margin-bottom:24px;">
+                    <span id="winnerBadge" class="winner-badge"></span>
+                    <p id="winnerText" style="margin-top:8px;color:var(--text-muted);"></p>
+                </div>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Dimensão</th>
+                            <th class="score-a">CV A</th>
+                            <th class="score-b">CV B</th>
+                            <th>Diferença</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonBody"></tbody>
+                </table>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px;">
+                    <div id="detailsA" class="cv-box"></div>
+                    <div id="detailsB" class="cv-box"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    (function(){
+        const fileA = document.getElementById('fileA');
+        const fileB = document.getElementById('fileB');
+        const zoneA = document.getElementById('zoneA');
+        const zoneB = document.getElementById('zoneB');
+        const compareBtn = document.getElementById('compareBtn');
+        const infoA = document.getElementById('infoA');
+        const infoB = document.getElementById('infoB');
+        let cvA = null, cvB = null;
+
+        function setupDrop(zone, input, infoLabel, setter) {
+            zone.addEventListener('click', () => input.click());
+            input.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    setter(e.target.files[0]);
+                    infoLabel.textContent = `✅ ${e.target.files[0].name}`;
+                    compareBtn.disabled = !(cvA && cvB);
+                }
+            });
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.parentNode.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.parentNode.classList.remove('dragover'));
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.parentNode.classList.remove('dragover');
+                const f = e.dataTransfer.files[0];
+                if (f && (f.name.endsWith('.pdf') || f.name.endsWith('.docx'))) {
+                    setter(f);
+                    infoLabel.textContent = `✅ ${f.name}`;
+                    compareBtn.disabled = !(cvA && cvB);
+                }
+            });
+        }
+
+        setupDrop(zoneA, fileA, infoA, (f) => cvA = f);
+        setupDrop(zoneB, fileB, infoB, (f) => cvB = f);
+
+        compareBtn.addEventListener('click', async () => {
+            compareBtn.disabled = true;
+            compareBtn.textContent = '⏳ Analisando...';
+
+            const form = new FormData();
+            form.append('cv_a', cvA);
+            form.append('cv_b', cvB);
+            form.append('job_type', 'preset');
+            form.append('job', document.getElementById('jobSelect').value);
+
+            try {
+                const resp = await fetch('/api/ab-test', { method: 'POST', body: form });
+                const data = await resp.json();
+                if (data.success) {
+                    showResults(data);
+                } else {
+                    alert(data.error || 'Erro na comparação');
+                }
+            } catch (e) {
+                alert('Erro de rede: ' + e.message);
+            } finally {
+                compareBtn.disabled = false;
+                compareBtn.textContent = '🧪 Comparar CVs';
+            }
+        });
+
+        function showResults(data) {
+            document.getElementById('results').style.display = 'block';
+            const badge = document.getElementById('winnerBadge');
+            const text = document.getElementById('winnerText');
+
+            if (data.winner === 'tie') {
+                badge.className = 'winner-badge tie';
+                badge.textContent = '⚖️ EMPATE';
+                text.textContent = `Ambos os CVs pontuaram ${data.cv_a.overall_score.toFixed(1)}`;
+            } else {
+                const winner = data.winner === 'A' ? data.cv_a : data.cv_b;
+                const loser = data.winner === 'A' ? data.cv_b : data.cv_a;
+                badge.className = 'winner-badge winner';
+                badge.textContent = `🏆 CV ${data.winner} VENCE`;
+                text.textContent = `${winner.candidate_name || 'CV ' + data.winner} pontuou ${winner.overall_score.toFixed(1)} vs ${loser.overall_score.toFixed(1)} (+${data.difference} pts)`;
+            }
+
+            const dims = [
+                { key: 'overall_score', label: '🏆 Score Final' },
+                { key: 'skill_match_score', label: '🎯 Skill Match' },
+                { key: 'experience_score', label: '💼 Experiência' },
+                { key: 'education_score', label: '🎓 Educação' },
+                { key: 'formatting_score', label: '📝 Formatação' },
+                { key: 'semantic_score', label: '🧠 Semântico' },
+            ];
+
+            const tbody = document.getElementById('comparisonBody');
+            tbody.innerHTML = dims.map((d, i) => {
+                const a = data.cv_a[d.key];
+                const b = data.cv_b[d.key];
+                const diff = a - b;
+                const diffStr = diff > 0 ? `+${diff.toFixed(1)} A` : diff < 0 ? `+${Math.abs(diff).toFixed(1)} B` : '—';
+                const highlight = i === 0 ? 'highlight' : '';
+                return `<tr class="${highlight}">
+                    <td>${d.label}</td>
+                    <td class="score-a">${a.toFixed(1)}</td>
+                    <td class="score-b">${b.toFixed(1)}</td>
+                    <td class="diff">${diffStr}</td>
+                </tr>`;
+            }).join('');
+
+            // Details
+            function renderDetails(cv, label, color) {
+                return `
+                    <h4 style="color:${color};margin-bottom:12px;">📄 CV ${label}: ${cv.candidate_name || '—'}</h4>
+                    <p><strong>Score:</strong> ${cv.overall_score.toFixed(1)}</p>
+                    <p><strong>Keywords:</strong> ${cv.matched_keywords.length} match · ${cv.missing_keywords.length} missing</p>
+                    <p><strong>Red Flags:</strong> ${cv.red_flags.length}</p>
+                    <div style="margin-top:8px;">
+                        <strong>Recomendações:</strong>
+                        ${cv.recommendations.map(r => `<div style="font-size:0.8rem;margin:4px 0;padding:4px 8px;background:rgba(99,102,241,0.05);border-radius:4px;">${r}</div>`).join('')}
+                    </div>
+                `;
+            }
+            document.getElementById('detailsA').innerHTML = renderDetails(data.cv_a, 'A', '#818cf8');
+            document.getElementById('detailsB').innerHTML = renderDetails(data.cv_b, 'B', '#f472b6');
+
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+    })();
+    </script>
+</body>
+</html>

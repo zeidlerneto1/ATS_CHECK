@@ -18,6 +18,79 @@ from engine.job_scraper import JobScraper
 from engine.job_text_parser import JobTextParser
 from engine.logger import ATSLogger
 
+# ONDA 3: Detecção de ATS por URL
+ATS_PATTERNS = {
+    "greenhouse": {
+        "patterns": [r"greenhouse\.io", r"boards\.greenhouse"],
+        "name": "Greenhouse",
+        "tips": "Use keywords exatas da vaga. Greenhouse faz matching literal.",
+        "format_preference": "PDF ou DOCX",
+    },
+    "workday": {
+        "patterns": [r"myworkday\.com", r"workday\.com"],
+        "name": "Workday",
+        "tips": "Workday usa ML/NER. Use formato MM/AAAA para datas e seções claras.",
+        "format_preference": "DOCX (metadados core.xml são lidos)",
+    },
+    "gupy": {
+        "patterns": [r"gupy\.io", r"portal\.gupy"],
+        "name": "Gupy",
+        "tips": "Gupy é brasileiro e valoriza PT-BR. Use datas no formato DD/MM/AAAA.",
+        "format_preference": "PDF ou DOCX",
+    },
+    "lever": {
+        "patterns": [r"lever\.co", r"jobs\.lever"],
+        "name": "Lever",
+        "tips": "Lever aceita upload direto. Use 1-2 páginas máximo.",
+        "format_preference": "PDF",
+    },
+    "linkedin": {
+        "patterns": [r"linkedin\.com/jobs", r"linkedin\.com/in"],
+        "name": "LinkedIn Easy Apply",
+        "tips": "Easy Apply usa o perfil LinkedIn como CV. Mantenha perfil atualizado.",
+        "format_preference": "Perfil LinkedIn",
+    },
+    "indeed": {
+        "patterns": [r"indeed\.com", r"indeed\.com.br"],
+        "name": "Indeed",
+        "tips": "Indeed extrai texto puro. Evite PDFs com imagens ou colunas.",
+        "format_preference": "DOCX",
+    },
+    "bamboohr": {
+        "patterns": [r"bamboohr\.com", r"bamboo\.hr"],
+        "name": "BambooHR",
+        "tips": "BambooHR é simples. Foque em keywords e experiência relevante.",
+        "format_preference": "PDF",
+    },
+    "recruitee": {
+        "patterns": [r"recruitee\.com"],
+        "name": "Recruitee",
+        "tips": "Recruitee faz parsing semântico. Use bullets com verbos de ação.",
+        "format_preference": "PDF ou DOCX",
+    },
+}
+
+def detect_ats_platform(url: str) -> dict:
+    """Detecta qual ATS a empresa usa baseado na URL da vaga"""
+    url_lower = url.lower()
+    for ats_id, ats_data in ATS_PATTERNS.items():
+        for pattern in ats_data["patterns"]:
+            if re.search(pattern, url_lower):
+                return {
+                    "id": ats_id,
+                    "name": ats_data["name"],
+                    "tips": ats_data["tips"],
+                    "format_preference": ats_data["format_preference"],
+                    "detected": True,
+                }
+    return {
+        "id": "unknown",
+        "name": "ATS Desconhecido",
+        "tips": "Use formato padrão: single-column, sem imagens, texto selecionável.",
+        "format_preference": "PDF ou DOCX",
+        "detected": False,
+    }
+
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -256,6 +329,18 @@ def analyze():
         },
     })
 
+@app.route("/api/detect-ats", methods=["POST"])
+def detect_ats():
+    """Detecta qual ATS a empresa usa pela URL"""
+    data = request.get_json()
+    if not data or "url" not in data:
+        return jsonify({"success": False, "error": "URL não fornecida"}), 400
+    url = data["url"].strip()
+    if not url.startswith(("http://", "https://")):
+        return jsonify({"success": False, "error": "URL inválida"}), 400
+    result = detect_ats_platform(url)
+    return jsonify({"success": True, "ats": result})
+
 @app.route("/api/scrape", methods=["POST"])
 def scrape_job():
     """Extrai dados de uma URL de vaga"""
@@ -285,6 +370,265 @@ def parse_job_text():
     parser = JobTextParser()
     result = parser.parse(text)
     return jsonify(result)
+
+@app.route("/ab-test")
+def ab_test_page():
+    return render_template("ab_test.html")
+
+@app.route("/api/ab-test", methods=["POST"])
+def ab_test():
+    """Compara 2 CVs na mesma vaga"""
+    if "cv_a" not in request.files or "cv_b" not in request.files:
+        return jsonify({"error": "Envie 2 CVs (cv_a e cv_b)"}), 400
+
+    file_a = request.files["cv_a"]
+    file_b = request.files["cv_b"]
+    if file_a.filename == "" or file_b.filename == "":
+        return jsonify({"error": "Arquivos vazios"}), 400
+
+    try:
+        job = _parse_job_from_request()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    results = {}
+    for label, file in [("A", file_a), ("B", file_b)]:
+        ext = Path(file.filename).suffix.lower()
+        if ext not in ['.pdf', '.docx']:
+            return jsonify({"error": f"Formato não suportado em CV {label}: {ext}"}), 400
+
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"ab_{label}_{filename}")
+        file.save(filepath)
+
+        engine = ATSEngine()
+        result = engine.analyze(filepath, job)
+        results[label] = {
+            "filename": file.filename,
+            "overall_score": result.overall_score,
+            "skill_match_score": result.skill_match_score,
+            "experience_score": result.experience_score,
+            "education_score": result.education_score,
+            "formatting_score": result.formatting_score,
+            "semantic_score": result.semantic_score,
+            "matched_keywords": result.matched_keywords,
+            "missing_keywords": result.missing_keywords,
+            "red_flags": result.red_flags,
+            "recommendations": result.recommendations,
+            "candidate_name": result.candidate_name,
+        }
+
+    # Determine winner
+    score_a = results["A"]["overall_score"]
+    score_b = results["B"]["overall_score"]
+    winner = "A" if score_a > score_b else "B" if score_b > score_a else "tie"
+    diff = abs(score_a - score_b)
+
+    return jsonify({
+        "success": True,
+        "job_title": job.title,
+        "cv_a": results["A"],
+        "cv_b": results["B"],
+        "winner": winner,
+        "difference": round(diff, 1),
+        "analysis": {
+            "skill_diff": round(results["A"]["skill_match_score"] - results["B"]["skill_match_score"], 1),
+            "exp_diff": round(results["A"]["experience_score"] - results["B"]["experience_score"], 1),
+            "edu_diff": round(results["A"]["education_score"] - results["B"]["education_score"], 1),
+            "format_diff": round(results["A"]["formatting_score"] - results["B"]["formatting_score"], 1),
+            "semantic_diff": round(results["A"]["semantic_score"] - results["B"]["semantic_score"], 1),
+        }
+    })
+
+# ONDA 3: Relatório em HTML otimizado para impressão
+@app.route("/api/report", methods=["POST"])
+def generate_report():
+    """Gera relatório HTML otimizado para impressão (Ctrl+P → PDF)"""
+    data = request.get_json()
+    if not data or "result" not in data:
+        return jsonify({"success": False, "error": "Dados da análise não fornecidos"}), 400
+
+    r = data["result"]
+    job = data.get("job", {})
+    debug = data.get("debug", {})
+
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório ATS - {r.get('candidate_name', 'Candidato')}</title>
+<style>
+@page {{ size: A4; margin: 2cm; }}
+body {{ font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 800px; margin: 0 auto; padding: 20px; }}
+h1 {{ color: #4f46e5; border-bottom: 3px solid #4f46e5; padding-bottom: 10px; }}
+h2 {{ color: #4338ca; margin-top: 30px; font-size: 1.2rem; }}
+.score-box {{ display: inline-block; padding: 20px 40px; border-radius: 12px; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; font-size: 2.5rem; font-weight: 700; text-align: center; margin: 20px 0; }}
+.score-label {{ font-size: 0.9rem; opacity: 0.9; }}
+.grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }}
+.card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }}
+.card h3 {{ margin: 0 0 8px; font-size: 0.9rem; color: #64748b; text-transform: uppercase; }}
+.card .value {{ font-size: 1.5rem; font-weight: 700; color: #4f46e5; }}
+.badge {{ display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }}
+.badge-success {{ background: #dcfce7; color: #166534; }}
+.badge-warning {{ background: #fef3c7; color: #92400e; }}
+.badge-danger {{ background: #fee2e2; color: #991b1b; }}
+.keyword {{ display: inline-block; padding: 3px 10px; margin: 3px; border-radius: 4px; font-size: 0.8rem; }}
+.keyword-match {{ background: #dcfce7; color: #166534; }}
+.keyword-missing {{ background: #fee2e2; color: #991b1b; }}
+.recommendation {{ padding: 10px 14px; margin: 6px 0; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 0 6px 6px 0; font-size: 0.9rem; }}
+.red-flag {{ padding: 10px 14px; margin: 6px 0; background: #fef2f2; border-left: 3px solid #ef4444; border-radius: 0 6px 6px 0; font-size: 0.9rem; }}
+.footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 0.8rem; color: #94a3b8; }}
+@media print {{ body {{ padding: 0; }} .no-print {{ display: none; }} }}
+</style>
+</head>
+<body>
+<h1>🤖 Relatório ATS Simulator</h1>
+<p><strong>Candidato:</strong> {r.get('candidate_name', 'Não detectado')}<br>
+<strong>Vaga:</strong> {job.get('title', '—')}<br>
+<strong>Data:</strong> {__import__('datetime').datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+
+<div class="score-box">
+    <div class="score-label">Score Final</div>
+    <div>{r.get('overall_score', 0):.1f}</div>
+</div>
+
+<h2>📊 Scores por Dimensão</h2>
+<div class="grid">
+    <div class="card"><h3>🎯 Skill Match</h3><div class="value">{r.get('skill_match_score', 0):.1f}</div></div>
+    <div class="card"><h3>💼 Experiência</h3><div class="value">{r.get('experience_score', 0):.1f}</div></div>
+    <div class="card"><h3>🎓 Educação</h3><div class="value">{r.get('education_score', 0):.1f}</div></div>
+    <div class="card"><h3>📝 Formatação</h3><div class="value">{r.get('formatting_score', 0):.1f}</div></div>
+    <div class="card"><h3>🧠 Semântico</h3><div class="value">{r.get('semantic_score', 0):.1f}</div></div>
+    <div class="card"><h3>🔤 Densidade</h3><div class="value">{r.get('keyword_density_score', 0):.1f}</div></div>
+</div>
+
+<h2>🎯 Keywords</h2>
+<p><strong>Match ({len(r.get('matched_keywords', []))}):</strong><br>
+{" ".join(f'<span class="keyword keyword-match">{k}</span>' for k in r.get('matched_keywords', []))}</p>
+<p><strong>Missing ({len(r.get('missing_keywords', []))}):</strong><br>
+{" ".join(f'<span class="keyword keyword-missing">{k}</span>' for k in r.get('missing_keywords', []))}</p>
+
+<h2>💡 Recomendações</h2>
+{"".join(f'<div class="recommendation">{rec}</div>' for rec in r.get('recommendations', []))}
+
+<h2>🚩 Red Flags</h2>
+{"".join(f'<div class="red-flag">{flag}</div>' for flag in r.get('red_flags', [])) or '<p style="color:#166534;">✅ Nenhum red flag detectado</p>'}
+
+<div class="footer">
+    Gerado por ATS Simulator · github.com/zeidlerneto1/ATS_CHECK<br>
+    Para uso educacional. Não substitui avaliação humana.
+</div>
+
+<div class="no-print" style="margin-top:30px;text-align:center;">
+    <button onclick="window.print()" style="padding:12px 32px;font-size:1rem;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;">🖨️ Imprimir / Salvar PDF</button>
+</div>
+</body>
+</html>"""
+
+    return jsonify({"success": True, "html": html})
+
+
+# ONDA 3: Template LaTeX otimizado para ATS
+@app.route("/api/latex", methods=["POST"])
+def generate_latex():
+    """Gera template LaTeX otimizado para ATS com metadados"""
+    data = request.get_json() or {}
+    contact = data.get("contact", {})
+    summary = data.get("summary", "")
+    experience = data.get("experience", [])
+    education = data.get("education", [])
+    skills = data.get("skills", [])
+
+    name = contact.get("name", "Nome Completo")
+    email = contact.get("email", "email@exemplo.com")
+    phone = contact.get("phone", "")
+    linkedin = contact.get("linkedin", "")
+    location = contact.get("location", "")
+
+    exp_latex = ""
+    for exp in experience:
+        exp_latex += f"""
+\cventry{{{exp.get('dates', 'MM/AAAA -- MM/AAAA')}}}{{{exp.get('title', 'Cargo')}}}{{{exp.get('company', 'Empresa')}}}{{{location}}}{{}}{{
+{chr(10).join(f'  \item {b}' for b in exp.get('bullets', []))}
+}}"""
+
+    edu_latex = ""
+    for edu in education:
+        edu_latex += f"""
+\cventry{{{edu.get('dates', 'AAAA -- AAAA')}}}{{{edu.get('degree', 'Grau')}}}{{{edu.get('institution', 'Instituição')}}}{{}}{{}}{{}}"""
+
+    skills_str = ", ".join(skills) if skills else "Skill 1, Skill 2, Skill 3"
+
+    latex = f"""% ATS-Optimized LaTeX CV Template
+% Compatível com: Greenhouse, Workday, Lever, Gupy
+% Instruções: Overleaf → Menu → Compiler → pdfLaTeX
+
+\documentclass[11pt,a4paper]{{article}}
+
+% Metadados para ATS (core.xml equivalent)
+\usepackage[utf8]{{inputenc}}
+\usepackage[T1]{{fontenc}}
+\usepackage[brazil]{{babel}}
+\usepackage{{hyperref}}
+\hypersetup{{
+    pdftitle={{{name} - CV}},
+    pdfauthor={{{name}}},
+    pdfsubject={{Curriculo Profissional}},
+    pdfkeywords={{{skills_str}}},
+}}
+
+% Layout ATS-friendly: single-column, sem margens exóticas
+\usepackage[margin=2cm]{{geometry}}
+\usepackage{{enumitem}}
+\setlist[itemize]{{leftmargin=1.2em,topsep=2pt,itemsep=1pt}}
+
+% Cores sutis (ATS ignora, mas humanos apreciam)
+\usepackage{{xcolor}}
+\definecolor{{accent}}{{HTML}}{{4F46E5}}
+
+% Seções
+\usepackage{{titlesec}}
+\titleformat{{\section}}{{\Large\bfseries\color{{accent}}}}{{}}}{{0em}}{{}}[\titlerule]
+\titlespacing*{{\section}}{{0pt}}{{12pt}}{{6pt}}
+
+% Comando para experiência
+\newcommand{{\cventry}}[6]{{
+  \textbf{{#2}} \hfill \textit{{#1}}\\
+  \textit{{#3}} \hfill #4\\
+  #6\vspace{{6pt}}
+}}
+
+\begin{{document}}
+
+% HEADER
+\begin{{center}}
+  {{\Huge \textbf{{{name}}}}}\\[6pt]
+  {email}{' \textbar ' + phone if phone else ''}{' \textbar ' + location if location else ''}{' \textbar ' + linkedin if linkedin else ''}
+\end{{center}}
+
+\vspace{{8pt}}
+
+% RESUMO
+\section{{Resumo Profissional}}
+{summary}
+
+% EXPERIÊNCIA
+\section{{Experiência Profissional}}
+{exp_latex}
+
+% FORMAÇÃO
+\section{{Formação Acadêmica}}
+{edu_latex}
+
+% SKILLS
+\section{{Habilidades Técnicas}}
+{skills_str}
+
+\end{{document}}
+"""
+
+    return jsonify({"success": True, "latex": latex, "filename": f"{name.lower().replace(' ', '_')}_cv_ats.tex"})
+
 
 @app.route("/cv-builder")
 def cv_builder():
