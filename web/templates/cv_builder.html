@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛠️ CV Builder ATS — Monte seu CV otimizado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cv_builder.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🛠️ CV Builder ATS</h1>
+            <p>Construa seu currículo passo a passo seguindo as regras do manual ATS Engineer</p>
+            <a href="/" class="btn-back">← Voltar ao Analisador</a>
+        </header>
+
+        <!-- Progresso -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-steps" id="progressSteps"></div>
+
+        <!-- Wizard -->
+        <form id="cvForm" class="wizard">
+
+            <!-- PASSO 1: Dados Pessoais + Metadados -->
+            <div class="step active" data-step="1">
+                <h2>👤 Passo 1: Dados Pessoais & Metadados</h2>
+                <div class="tip-box">
+                    <strong>💡 Dica do Manual (Cap. 2):</strong> Os metadados do arquivo são lidos ANTES do corpo do texto. Preencha corretamente para maximizar o score inicial.
+                </div>
+                <div class="form-grid">
+                    <div class="field"><label>Nome Completo *</label><input type="text" id="fullName" placeholder="Peter Zeidler" required></div>
+                    <div class="field"><label>Email *</label><input type="email" id="email" placeholder="peterzeidler12@gmail.com" required></div>
+                    <div class="field"><label>Telefone *</label><input type="text" id="phone" placeholder="(21) 98761-9372" required></div>
+                    <div class="field"><label>LinkedIn</label><input type="text" id="linkedin" placeholder="linkedin.com/in/peterzeidler"></div>
+                    <div class="field"><label>Cidade / Estado</label><input type="text" id="location" placeholder="Petrópolis, RJ"></div>
+                    <div class="field"><label>Título do Cargo (metadado dc:title) *</label><input type="text" id="jobTitle" placeholder="Desenvolvedor Full Stack Pleno" required></div>
+                </div>
+                <div class="field full"><label>Keywords (metadado cp:keywords) — Top 8 separadas por vírgula *</label><input type="text" id="metaKeywords" placeholder="Node.js, React, PostgreSQL, Docker, Git, REST API, JavaScript, Python" required></div>
+                <div class="field full"><label>Subject (metadado dc:subject) — Pitch de 1 frase *</label><input type="text" id="metaSubject" placeholder="Dev Full Stack com 1+ ano em Node.js, React e PostgreSQL" required></div>
+            </div>
+
+            <!-- PASSO 2: Resumo Profissional -->
+            <div class="step" data-step="2">
+                <h2>📝 Passo 2: Resumo Profissional</h2>
+                <div class="tip-box">
+                    <strong>💡 Dica do Manual (Cap. 5):</strong> O Resumo tem peso <strong>1.5x</strong> no scoring. A última linha deve conter "Tecnologias principais: [...]" — isso cria <em>context bleed</em> para a seção de Experiência.
+                </div>
+                <div class="field full">
+                    <label>Resumo Profissional (3 a 5 linhas) *</label>
+                    <textarea id="summary" rows="5" placeholder="Desenvolvedor Full Stack com 1 ano e 4 meses de experiencia..." required></textarea>
+                    <small class="hint">Regra bilíngue: contexto em português, tecnologias em inglês. Ex: "Desenvolvi APIs REST em Node.js com Docker e PostgreSQL"</small>
+                </div>
+                <div class="field full">
+                    <label>Linha de Context Bleed (Tecnologias principais)</label>
+                    <input type="text" id="contextBleed" placeholder="Tecnologias principais: Node.js, Express, React, PostgreSQL, Docker, Git">
+                </div>
+            </div>
+
+            <!-- PASSO 3: Experiência Profissional -->
+            <div class="step" data-step="3">
+                <h2>💼 Passo 3: Experiência Profissional</h2>
+                <div class="tip-box">
+                    <strong>💡 Dica do Manual (Cap. 6):</strong> Use <strong>MM/AAAA</strong> para datas. Aplique a <strong>Fórmula XYZ</strong>: "[Verbo] [O quê], resultando em [Métrica], utilizando [Stack]". A primeira linha pesa 2x.
+                </div>
+                <div id="experiencesContainer"></div>
+                <button type="button" class="btn-add" onclick="addExperience()">+ Adicionar Experiência</button>
+            </div>
+
+            <!-- PASSO 4: Projetos -->
+            <div class="step" data-step="4">
+                <h2>🚀 Passo 4: Projetos / Portfólio</h2>
+                <div class="tip-box">
+                    <strong>💡 Dica do Manual (Cap. 5):</strong> Projetos têm peso <strong>1.1x</strong>. Use esta seção para cobrir keywords que faltam na Experiência. Sempre inclua link clicável (https://...).
+                </div>
+                <div id="projectsContainer"></div>
+                <button type="button" class="btn-add" onclick="addProject()">+ Adicionar Projeto</button>
+            </div>
+
+            <!-- PASSO 5: Educação -->
+            <div class="step" data-step="5">
+                <h2>🎓 Passo 5: Educação</h2>
+                <div class="tip-box">
+                    <strong>💡 Dica do Manual (Cap. 6):</strong> Para perfis com +2 anos de experiência, Educação vem DEPOIS de Experiência. Use o termo exato do nível exigido pela vaga.
+                </div>
+                <div id="educationContainer"></div>
+                <button type="button" class="btn-add" onclick="addEducation()">+ Adicionar Formação</button>
+            </div>
+
+            <!-- PASSO 6: Skills -->
+            <div class="step" data-step="6">
+                <h2>🛠️ Passo 6: Skills / Habilidades</h2>
+                <div class="tip-box">
+                    <strong>💡 Dica do Manual (Cap. 5):</strong> Lista apenas as <strong>Top 15</strong> mais relevantes. Organize por categoria. Skills em lista pura têm peso <strong>0.8x</strong> — não dependa só delas.
+                </div>
+                <div class="skills-categories">
+                    <div class="skill-cat">
+                        <label>Linguagens</label>
+                        <input type="text" id="skillsLang" placeholder="JavaScript, Python, TypeScript...">
+                    </div>
+                    <div class="skill-cat">
+                        <label>Frameworks / Bibliotecas</label>
+                        <input type="text" id="skillsFrameworks" placeholder="Node.js, Express, React, Flask...">
+                    </div>
+                    <div class="skill-cat">
+                        <label>Bancos de Dados</label>
+                        <input type="text" id="skillsDbs" placeholder="PostgreSQL, MySQL, MongoDB...">
+                    </div>
+                    <div class="skill-cat">
+                        <label>Infra / DevOps</label>
+                        <input type="text" id="skillsInfra" placeholder="Docker, Git, CI/CD, AWS...">
+                    </div>
+                    <div class="skill-cat">
+                        <label>Ferramentas / Outros</label>
+                        <input type="text" id="skillsTools" placeholder="GitHub Actions, JWT, RBAC, REST API...">
+                    </div>
+                </div>
+                <div class="field full">
+                    <label>Idiomas</label>
+                    <input type="text" id="languages" placeholder="Portugues — Nativo, Ingles — Intermediario">
+                </div>
+            </div>
+
+            <!-- PASSO 7: Preview & Download -->
+            <div class="step" data-step="7">
+                <h2>✅ Passo 7: Preview & Download</h2>
+                <div class="tip-box success">
+                    <strong>🎯 Checklist Final (Cap. 19):</strong> Antes de baixar, verifique: single-column, sem tabelas, datas em MM/AAAA, máximo 2 páginas, links clicáveis, UTF-8 sem BOM.
+                </div>
+                <div class="preview-actions">
+                    <button type="button" class="btn-preview" onclick="updatePreview()">👁️ Atualizar Preview</button>
+                    <button type="button" class="btn-download" onclick="downloadHTML()">📥 Baixar CV em HTML</button>
+                    <button type="button" class="btn-download-alt" onclick="downloadText()">📄 Baixar como Texto Puro</button>
+                </div>
+                <div class="preview-container">
+                    <iframe id="previewFrame" class="preview-frame"></iframe>
+                </div>
+            </div>
+
+            <!-- Navegação -->
+            <div class="wizard-nav">
+                <button type="button" class="btn-nav" id="btnPrev" onclick="changeStep(-1)" disabled>← Anterior</button>
+                <button type="button" class="btn-nav btn-primary" id="btnNext" onclick="changeStep(1)">Próximo →</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/cv_builder.js') }}"></script>
+</body>
+</html>

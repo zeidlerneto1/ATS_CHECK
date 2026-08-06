@@ -274,5 +274,9 @@ def parse_job_text():
     result = parser.parse(text)
     return jsonify(result)
 
+@app.route("/cv-builder")
+def cv_builder():
+    return render_template("cv_builder.html")
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)
