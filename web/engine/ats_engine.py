@@ -229,7 +229,14 @@ class ATSEngine:
         return {"score": round(score, 1), "weight": 0.25}
 
     def _calc_education_score(self, text: str, required: str):
-        levels = {"tecnico": 2, "graduacao": 3, "bacharel": 3, "mestrado": 4, "phd": 5}
+        levels = {
+            "ensino medio": 1, "high school": 1,
+            "tecnico": 1, "technical": 1,  # técnico é nível médio, abaixo de superior
+            "tecnologo": 2, "tecnólogo": 2,  # tecnólogo = superior (nível 2)
+            "graduacao": 3, "bacharel": 3, "bachelor": 3, "bs": 3, "ba": 3, "licenciatura": 3,
+            "pos": 4, "mestrado": 4, "master": 4, "ms": 4,
+            "doutorado": 5, "phd": 5, "doctorate": 5
+        }
         req = levels.get(required.lower(), 3)
         text_lower = text.lower()
         max_lvl = 0
