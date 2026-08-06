@@ -97,11 +97,68 @@ class ATSEngine:
             "jwt": ["json web token", "token jwt"],
             "rbac": ["role based access control", "controle de acesso"],
         }
+        # Clusters semânticos de skills (Cap. 5 do manual)
+        self.SKILL_CLUSTERS = {
+            "node_ecosystem": {
+                "skills": ["node.js", "express", "npm", "javascript", "typescript"],
+                "bonus": 8, "label": "Ecossistema Node.js"
+            },
+            "react_ecosystem": {
+                "skills": ["react", "redux", "next.js", "javascript", "typescript", "html", "css"],
+                "bonus": 8, "label": "Ecossistema React"
+            },
+            "vue_ecosystem": {
+                "skills": ["vue", "vuex", "nuxt", "javascript", "typescript"],
+                "bonus": 8, "label": "Ecossistema Vue"
+            },
+            "python_data": {
+                "skills": ["python", "pandas", "numpy", "scikit_learn", "tensorflow", "pytorch"],
+                "bonus": 8, "label": "Data Science Python"
+            },
+            "python_web": {
+                "skills": ["python", "django", "flask", "fastapi", "sql"],
+                "bonus": 8, "label": "Web Python"
+            },
+            "java_spring": {
+                "skills": ["java", "spring", "sql", "rest_api"],
+                "bonus": 8, "label": "Java/Spring"
+            },
+            "devops_cloud": {
+                "skills": ["docker", "kubernetes", "aws", "ci/cd", "terraform", "linux"],
+                "bonus": 8, "label": "DevOps/Cloud"
+            },
+            "database_sql": {
+                "skills": ["sql", "postgresql", "mysql", "redis"],
+                "bonus": 6, "label": "Bancos SQL"
+            },
+            "frontend_core": {
+                "skills": ["javascript", "typescript", "html", "css", "git"],
+                "bonus": 5, "label": "Frontend Core"
+            },
+            "testing": {
+                "skills": ["tdd", "jest", "cypress", "selenium"],
+                "bonus": 5, "label": "Testing"
+            },
+        }
+
+        # Verbos de ação para análise XYZ (Cap. 6)
+        self.ACTION_VERBS = {
+            "pt": ["desenvolvi", "criei", "implementei", "construí", "otimizei", "reduzi",
+                   "aumentei", "melhorei", "liderou", "gerenciei", "coordenei", "automatizei",
+                   "integrei", "deployei", "mantive", "refatorei", "projetei", "arquitetei",
+                   "configurei", "instalei", "atualizei", "migrei", "testei", "documentei"],
+            "en": ["developed", "created", "implemented", "built", "optimized", "reduced",
+                   "increased", "improved", "led", "managed", "coordinated", "automated",
+                   "integrated", "deployed", "maintained", "refactored", "designed", "architected",
+                   "configured", "installed", "updated", "migrated", "tested", "documented"],
+        }
+
         self._debug_data = {
             "contact": {}, "parsed_metadata": {}, "keyword_details": {},
             "score_components": {}, "experience_years_detected": None,
             "education_level_detected": 0, "sections_found": [],
-            "section_scores": {},
+            "section_scores": {}, "semantic_clusters": [], "career_gaps": [],
+            "bullet_analysis": [], "bilingual_bonus": 0, "context_bleed": [],
         }
 
     def get_debug_data(self) -> Dict[str, Any]:
@@ -113,11 +170,68 @@ class ATSEngine:
             self.logger.add_callback(log_callback)
 
         self.parser.logger = self.logger
+        # Clusters semânticos de skills (Cap. 5 do manual)
+        self.SKILL_CLUSTERS = {
+            "node_ecosystem": {
+                "skills": ["node.js", "express", "npm", "javascript", "typescript"],
+                "bonus": 8, "label": "Ecossistema Node.js"
+            },
+            "react_ecosystem": {
+                "skills": ["react", "redux", "next.js", "javascript", "typescript", "html", "css"],
+                "bonus": 8, "label": "Ecossistema React"
+            },
+            "vue_ecosystem": {
+                "skills": ["vue", "vuex", "nuxt", "javascript", "typescript"],
+                "bonus": 8, "label": "Ecossistema Vue"
+            },
+            "python_data": {
+                "skills": ["python", "pandas", "numpy", "scikit_learn", "tensorflow", "pytorch"],
+                "bonus": 8, "label": "Data Science Python"
+            },
+            "python_web": {
+                "skills": ["python", "django", "flask", "fastapi", "sql"],
+                "bonus": 8, "label": "Web Python"
+            },
+            "java_spring": {
+                "skills": ["java", "spring", "sql", "rest_api"],
+                "bonus": 8, "label": "Java/Spring"
+            },
+            "devops_cloud": {
+                "skills": ["docker", "kubernetes", "aws", "ci/cd", "terraform", "linux"],
+                "bonus": 8, "label": "DevOps/Cloud"
+            },
+            "database_sql": {
+                "skills": ["sql", "postgresql", "mysql", "redis"],
+                "bonus": 6, "label": "Bancos SQL"
+            },
+            "frontend_core": {
+                "skills": ["javascript", "typescript", "html", "css", "git"],
+                "bonus": 5, "label": "Frontend Core"
+            },
+            "testing": {
+                "skills": ["tdd", "jest", "cypress", "selenium"],
+                "bonus": 5, "label": "Testing"
+            },
+        }
+
+        # Verbos de ação para análise XYZ (Cap. 6)
+        self.ACTION_VERBS = {
+            "pt": ["desenvolvi", "criei", "implementei", "construí", "otimizei", "reduzi",
+                   "aumentei", "melhorei", "liderou", "gerenciei", "coordenei", "automatizei",
+                   "integrei", "deployei", "mantive", "refatorei", "projetei", "arquitetei",
+                   "configurei", "instalei", "atualizei", "migrei", "testei", "documentei"],
+            "en": ["developed", "created", "implemented", "built", "optimized", "reduced",
+                   "increased", "improved", "led", "managed", "coordinated", "automated",
+                   "integrated", "deployed", "maintained", "refactored", "designed", "architected",
+                   "configured", "installed", "updated", "migrated", "tested", "documented"],
+        }
+
         self._debug_data = {
             "contact": {}, "parsed_metadata": {}, "keyword_details": {},
             "score_components": {}, "experience_years_detected": None,
             "education_level_detected": 0, "sections_found": [],
-            "section_scores": {},
+            "section_scores": {}, "semantic_clusters": [], "career_gaps": [],
+            "bullet_analysis": [], "bilingual_bonus": 0, "context_bleed": [],
         }
 
         # INGEST + PARSE
@@ -148,12 +262,41 @@ class ATSEngine:
         self._debug_data["keyword_details"] = match_details
         keyword_density = self._calc_keyword_density(raw_text, all_keywords)
 
-        # SCORE
+        # ONDA 2: Inteligência Semântica
+        # 6. Clusterização semântica
+        cluster_bonus, cluster_details = self._calc_semantic_clusters(raw_text, matched)
+        self._debug_data["semantic_clusters"] = cluster_details
+
+        # 7. Gaps de carreira
+        gaps = self._detect_career_gaps(raw_text)
+        self._debug_data["career_gaps"] = gaps
+        if gaps:
+            for g in gaps:
+                if g["months"] >= 6:
+                    self.logger.log("FILTER", f"Gap de carreira detectado: {g['months']} meses", g)
+
+        # 8. Análise de bullets XYZ
+        bullet_analysis = self._analyze_bullets_xyz(raw_text, sections)
+        self._debug_data["bullet_analysis"] = bullet_analysis
+
+        # 9. Regra bilíngue
+        bilingual_bonus = self._detect_bilingual_bonus(raw_text, sections)
+        self._debug_data["bilingual_bonus"] = bilingual_bonus
+
+        # 10. Context bleed
+        bleed_bonus, bleed_details = self._detect_context_bleed(sections, matched)
+        self._debug_data["context_bleed"] = bleed_details
+
+        # SCORE (com bônus da Onda 2)
         skill_score = self._calc_skill_score(matched, job.required_skills, job.preferred_skills)
         exp_score = self._calc_experience_score(raw_text, job.required_experience_years)
         edu_score = self._calc_education_score(raw_text, job.education_level)
         fmt_score = self._calc_formatting_score(raw_text, parsed, metadata)
         sem_score = self._calc_semantic_score(raw_text, job.responsibilities, sections)
+
+        # Aplicar bônus semânticos
+        sem_score["score"] = min(100, sem_score["score"] + cluster_bonus + bilingual_bonus + bleed_bonus)
+        skill_score["score"] = min(100, skill_score["score"] + cluster_bonus * 0.5)
 
         scores = {
             "skill_match": skill_score,
@@ -587,6 +730,207 @@ class ATSEngine:
 
         return flags
 
+
+    # ============================================================
+    # ONDA 2: INTELIGÊNCIA SEMÂNTICA
+    # ============================================================
+
+    # 6. CLUSTERIZAÇÃO SEMÂNTICA DE SKILLS
+    def _calc_semantic_clusters(self, text: str, matched_skills: List[str]) -> Tuple[float, List[Dict]]:
+        """Detecta clusters de skills que aparecem juntas no mesmo contexto"""
+        text_lower = text.lower()
+        clusters_found = []
+        total_bonus = 0
+
+        for cluster_id, cluster in self.SKILL_CLUSTERS.items():
+            cluster_skills = [s.lower() for s in cluster["skills"]]
+            # Verificar quais skills do cluster foram detectadas no CV
+            found_in_cv = [s for s in cluster_skills if s in [m.lower() for m in matched_skills]]
+            if len(found_in_cv) >= 2:
+                # Verificar se aparecem no mesmo contexto (mesmo parágrafo/bullet)
+                paragraphs = text_lower.split("\n")
+                context_matches = 0
+                for para in paragraphs:
+                    para = para.strip()
+                    if len(para) < 10:
+                        continue
+                    matches_in_para = sum(1 for s in cluster_skills if s in para)
+                    if matches_in_para >= 2:
+                        context_matches += 1
+
+                if context_matches > 0:
+                    bonus = min(cluster["bonus"], cluster["bonus"] * context_matches)
+                    total_bonus += bonus
+                    clusters_found.append({
+                        "cluster": cluster["label"],
+                        "skills_found": found_in_cv,
+                        "context_matches": context_matches,
+                        "bonus": bonus,
+                    })
+
+        self.logger.log("MATCH", f"Clusters semânticos: {len(clusters_found)} encontrados", {
+            "clusters": [c["cluster"] for c in clusters_found],
+            "total_bonus": total_bonus,
+        })
+        return total_bonus, clusters_found
+
+    # 7. VERIFICAÇÃO DE GAPS DE CARREIRA
+    def _detect_career_gaps(self, text: str) -> List[Dict]:
+        """Detecta gaps entre experiências profissionais (>3 meses = atenção)"""
+        dates_found = self.date_parser.find_dates_in_text(text)
+        if len(dates_found) < 2:
+            return []
+
+        # Ordenar por data de início
+        sorted_dates = sorted(dates_found, key=lambda d: (d["start"]["year"], d["start"].get("month") or 1))
+        gaps = []
+
+        for i in range(1, len(sorted_dates)):
+            prev_end = sorted_dates[i - 1]["end"]
+            curr_start = sorted_dates[i]["start"]
+
+            prev_year = prev_end["year"]
+            prev_month = prev_end.get("month") or 12
+            curr_year = curr_start["year"]
+            curr_month = curr_start.get("month") or 1
+
+            gap_months = (curr_year - prev_year) * 12 + (curr_month - prev_month)
+            if gap_months > 3:
+                severity = "critical" if gap_months >= 6 else "warning"
+                gaps.append({
+                    "gap_index": i,
+                    "months": gap_months,
+                    "from": f"{prev_month}/{prev_year}",
+                    "to": f"{curr_month}/{curr_year}",
+                    "severity": severity,
+                })
+
+        self.logger.log("FILTER", f"Gaps de carreira: {len(gaps)} detectados", {
+            "gaps": [{"months": g["months"], "severity": g["severity"]} for g in gaps]
+        })
+        return gaps
+
+    # 8. ANÁLISE DE BULLETS XYZ
+    def _analyze_bullets_xyz(self, text: str, sections: Dict[str, str]) -> List[Dict]:
+        """Analisa bullets segundo a Fórmula XYZ: [O quê] + [Quanto] + [Como]"""
+        analysis = []
+        exp_text = sections.get("experiencia", sections.get("experiência", ""))
+        if not exp_text:
+            return analysis
+
+        bullets = [b.strip() for b in exp_text.split("\n") if b.strip().startswith(("-", "•", "*", "►", "▸", "→")) or len(b.strip()) > 20]
+
+        for bullet in bullets[:20]:  # Limitar a 20 bullets
+            bullet_lower = bullet.lower()
+            # Verbo de ação no início
+            has_action_verb = any(v in bullet_lower[:40] for v in self.ACTION_VERBS["pt"] + self.ACTION_VERBS["en"])
+            # Métrica/numero
+            has_metric = bool(re.search(r'\d+%|\d+\s*(?:x|vezes|times|h|horas|min|dias|meses|anos|k|mil|mi)', bullet_lower))
+            # Stack/tecnologia mencionada
+            has_stack = any(tech in bullet_lower for tech in ["node", "react", "python", "java", "sql", "docker", "aws", "git"])
+            # Primeira linha (peso maior)
+            is_first_line = bullet == bullets[0] if bullets else False
+
+            score = 0
+            if has_action_verb: score += 30
+            if has_metric: score += 40
+            if has_stack: score += 20
+            if is_first_line: score += 10
+
+            grade = "A" if score >= 80 else "B" if score >= 60 else "C" if score >= 40 else "D"
+
+            analysis.append({
+                "bullet_preview": bullet[:80] + "..." if len(bullet) > 80 else bullet,
+                "has_action_verb": has_action_verb,
+                "has_metric": has_metric,
+                "has_stack": has_stack,
+                "is_first_line": is_first_line,
+                "score": score,
+                "grade": grade,
+            })
+
+        # Calcular média
+        if analysis:
+            avg = sum(a["score"] for a in analysis) / len(analysis)
+            self.logger.log("SCORE", f"Análise XYZ: {len(analysis)} bullets, média {avg:.1f}/100", {
+                "bullets_analyzed": len(analysis),
+                "average_score": round(avg, 1),
+                "grade_a_count": sum(1 for a in analysis if a["grade"] == "A"),
+            })
+        return analysis
+
+    # 9. REGRA BILÍNGUE
+    def _detect_bilingual_bonus(self, text: str, sections: Dict[str, str]) -> float:
+        """Dá bônus quando tecnologias em EN aparecem em contexto PT"""
+        bonus = 0
+        details = []
+
+        # Tecnologias em inglês comuns
+        en_techs = ["node.js", "react", "docker", "kubernetes", "aws", "sql", "rest", "api",
+                    "javascript", "typescript", "python", "java", "git", "linux", "ci/cd"]
+
+        for sec_name, sec_content in sections.items():
+            sec_lower = sec_content.lower()
+            # Verificar se a seção tem contexto em português
+            pt_markers = ["desenvolvi", "criei", "implementei", "experiência", "profissional",
+                          "trabalhei", "atuei", "responsável", "gestão", "equipe"]
+            has_pt_context = any(m in sec_lower for m in pt_markers)
+
+            if has_pt_context:
+                for tech in en_techs:
+                    if tech in sec_lower:
+                        bonus += 1.5
+                        details.append({"tech": tech, "section": sec_name})
+
+        bonus = min(10, bonus)  # Cap em 10 pontos
+        self.logger.log("MATCH", f"Bônus bilíngue: +{bonus:.1f} pts", {
+            "matches": len(details), "bonus": bonus
+        })
+        return bonus
+
+    # 10. CONTEXT BLEED
+    def _detect_context_bleed(self, sections: Dict[str, str], matched_skills: List[str]) -> Tuple[float, List[Dict]]:
+        """Detecta keywords no final de uma seção E início da próxima (context bleed)"""
+        bonus = 0
+        bleed_details = []
+
+        section_order = ["resumo", "experiencia", "experiência", "projetos", "educacao", "educação", "skills", "habilidades"]
+        ordered_sections = []
+        for sec_name in section_order:
+            if sec_name in sections:
+                ordered_sections.append((sec_name, sections[sec_name]))
+
+        for i in range(len(ordered_sections) - 1):
+            curr_name, curr_content = ordered_sections[i]
+            next_name, next_content = ordered_sections[i + 1]
+
+            # Últimas 3 linhas da seção atual
+            curr_lines = [l.strip().lower() for l in curr_content.split("\n") if l.strip()][-3:]
+            # Primeiras 3 linhas da próxima seção
+            next_lines = [l.strip().lower() for l in next_content.split("\n") if l.strip()][:3]
+
+            curr_text = " ".join(curr_lines)
+            next_text = " ".join(next_lines)
+
+            for skill in matched_skills:
+                skill_lower = skill.lower()
+                in_curr = skill_lower in curr_text
+                in_next = skill_lower in next_text
+                if in_curr and in_next:
+                    bonus += 2
+                    bleed_details.append({
+                        "skill": skill,
+                        "from_section": curr_name,
+                        "to_section": next_name,
+                        "bonus": 2,
+                    })
+
+        bonus = min(15, bonus)  # Cap em 15 pontos
+        self.logger.log("MATCH", f"Context bleed: {len(bleed_details)} ocorrências", {
+            "bleed_count": len(bleed_details), "bonus": bonus
+        })
+        return bonus, bleed_details
+
     # ============================================================
     # RECOMMENDATIONS
     # ============================================================
@@ -602,4 +946,27 @@ class ATSEngine:
             recs.append("🎓 Formação não detectada. Use termos como 'Graduação', 'Bacharelado' ou 'Tecnólogo'.")
         if scores.get("experience", {}).get("score", 100) < 30:
             recs.append("💼 Experiência mal detectada. Use formato 'MM/AAAA' e escreva 'X anos de experiência' explicitamente.")
+
+        # ONDA 2: Recomendações semânticas
+        clusters = self._debug_data.get("semantic_clusters", [])
+        if clusters:
+            incomplete = [c for c in clusters if len(c.get("skills_found", [])) < 3]
+            if incomplete:
+                recs.append(f"🔗 Cluster incompleto: {incomplete[0]['cluster']}. Adicione skills relacionadas para reforçar o ecossistema.")
+
+        gaps = self._debug_data.get("career_gaps", [])
+        if gaps:
+            critical_gaps = [g for g in gaps if g["severity"] == "critical"]
+            if critical_gaps:
+                recs.append(f"⏳ Gap de carreira de {critical_gaps[0]['months']} meses detectado. Justifique com projetos ou cursos.")
+
+        bullets = self._debug_data.get("bullet_analysis", [])
+        if bullets:
+            weak = [b for b in bullets if b["grade"] in ("C", "D")]
+            if len(weak) > len(bullets) * 0.5:
+                recs.append("📝 Mais da metade dos bullets são fracos. Use a Fórmula XYZ: [O quê] + [Quanto] + [Como].")
+            no_metrics = [b for b in bullets if not b["has_metric"]]
+            if len(no_metrics) > len(bullets) * 0.7:
+                recs.append("📊 Adicione métricas nos bullets (números, %, tempo). Ex: 'Reduzi tempo de deploy de 2h para 15min'.")
+
         return recs

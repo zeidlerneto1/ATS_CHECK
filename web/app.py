@@ -248,6 +248,11 @@ def analyze():
             **debug,
             "metadata": debug.get("parsed_metadata", {}),
             "file_type": debug.get("file_type", "unknown"),
+            "semantic_clusters": debug.get("semantic_clusters", []),
+            "career_gaps": debug.get("career_gaps", []),
+            "bullet_analysis": debug.get("bullet_analysis", []),
+            "bilingual_bonus": debug.get("bilingual_bonus", 0),
+            "context_bleed": debug.get("context_bleed", []),
         },
     })
 

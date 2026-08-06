@@ -225,6 +225,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="section-lines">${s.lines}</span>
             </div>
         `).join('') || '<em style="color:var(--text-muted)">Nenhuma seção detectada automaticamente</em>';
+
+        // === ONDA 2: Inteligência Semântica ===
+        let extraHtml = '';
+
+        // 6. Clusters Semânticos
+        const clusters = data.debug?.semantic_clusters || [];
+        if (clusters.length > 0) {
+            extraHtml += `<div class="semantic-section"><h4 style="margin:20px 0 10px;color:var(--accent);">🔗 Clusters Semânticos</h4>`;
+            clusters.forEach(c => {
+                extraHtml += `<div class="entity-card" style="border-left:3px solid var(--success);margin-bottom:8px;">
+                    <div class="entity-label">${c.cluster} (+${c.bonus} pts)</div>
+                    <div class="entity-value" style="font-size:0.85rem;">${c.skills_found.join(', ')} · ${c.context_matches} contexto(s)</div>
+                </div>`;
+            });
+            extraHtml += `</div>`;
+        }
+
+        // 7. Gaps de Carreira
+        const gaps = data.debug?.career_gaps || [];
+        if (gaps.length > 0) {
+            extraHtml += `<div class="semantic-section"><h4 style="margin:20px 0 10px;color:var(--accent);">⏳ Gaps de Carreira</h4>`;
+            gaps.forEach(g => {
+                const color = g.severity === 'critical' ? 'var(--danger)' : 'var(--warning)';
+                const icon = g.severity === 'critical' ? '🚨' : '⚠️';
+                extraHtml += `<div class="entity-card" style="border-left:3px solid ${color};margin-bottom:8px;">
+                    <div class="entity-label">${icon} ${g.months} meses</div>
+                    <div class="entity-value" style="font-size:0.85rem;">${g.from} → ${g.to}</div>
+                </div>`;
+            });
+            extraHtml += `</div>`;
+        }
+
+        // 8. Análise XYZ dos Bullets
+        const bullets = data.debug?.bullet_analysis || [];
+        if (bullets.length > 0) {
+            extraHtml += `<div class="semantic-section"><h4 style="margin:20px 0 10px;color:var(--accent);">📝 Análise XYZ dos Bullets</h4>`;
+            const avg = bullets.reduce((sum, b) => sum + b.score, 0) / bullets.length;
+            extraHtml += `<div style="margin-bottom:12px;font-size:0.9rem;color:var(--text-muted);">Média: ${avg.toFixed(1)}/100 · ${bullets.filter(b => b.grade === 'A').length} nota(s) A</div>`;
+            bullets.slice(0, 8).forEach(b => {
+                const color = b.grade === 'A' ? 'var(--success)' : b.grade === 'B' ? 'var(--info)' : b.grade === 'C' ? 'var(--warning)' : 'var(--danger)';
+                extraHtml += `<div class="entity-card" style="border-left:3px solid ${color};margin-bottom:6px;">
+                    <div class="entity-label">Nota ${b.grade} — ${b.score}/100</div>
+                    <div class="entity-value" style="font-size:0.8rem;">${b.bullet_preview}</div>
+                    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">
+                        ${b.has_action_verb ? '✅ Verbo' : '❌ Verbo'} · ${b.has_metric ? '✅ Métrica' : '❌ Métrica'} · ${b.has_stack ? '✅ Stack' : '❌ Stack'}
+                    </div>
+                </div>`;
+            });
+            extraHtml += `</div>`;
+        }
+
+        if (extraHtml) {
+            const container = sectionsList.parentNode;
+            const div = document.createElement('div');
+            div.innerHTML = extraHtml;
+            container.appendChild(div);
+        }
     }
 
     function renderKeywords(result, job) {
@@ -312,6 +369,22 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="score-formula">Fórmula: Σ(score × peso) / Σ(pesos)</div>
         `;
+        // ONDA 2: Bônus Semânticos
+        const bilingual = data.debug?.bilingual_bonus || 0;
+        const bleed = data.debug?.context_bleed || [];
+        if (bilingual > 0 || bleed.length > 0) {
+            html += `<div style="margin-top:16px;padding-top:16px;border-top:1px dashed var(--border);">`;
+            html += `<h4 style="margin-bottom:10px;color:var(--accent);">🧠 Bônus Semânticos (Onda 2)</h4>`;
+            if (bilingual > 0) {
+                html += `<div class="score-row"><div class="score-name">🌐 Regra Bilíngue</div><div class="score-bar-wrap"><div class="score-bar high" style="width:${Math.min(100, bilingual*10)}%"></div></div><div class="score-value">+${bilingual.toFixed(1)}</div></div>`;
+            }
+            if (bleed.length > 0) {
+                html += `<div class="score-row"><div class="score-name">🔗 Context Bleed (${bleed.length}x)</div><div class="score-bar-wrap"><div class="score-bar high" style="width:${Math.min(100, bleed.length*10)}%"></div></div><div class="score-value">+${(bleed.length*2).toFixed(0)}</div></div>`;
+                html += `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Skills reforçadas entre seções: ${bleed.map(b => b.skill).join(', ')}</div>`;
+            }
+            html += `</div>`;
+        }
+
         breakdown.innerHTML = html;
 
         // Red flags
