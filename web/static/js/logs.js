@@ -178,25 +178,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const r = data.result;
         const logs = data.logs || [];
         const extractLogs = logs.filter(l => l.stage === 'EXTRACT');
-        const contact = extractLogs[0]?.details || {};
+        const logContact = extractLogs[0]?.details || {};
+        // Merge: result has priority, then debug contact, then logs
+        const contact = {
+            name: r?.candidate_name || data.debug?.contact?.name || logContact.name || '',
+            email: data.debug?.contact?.email || logContact.email || '',
+            phone: data.debug?.contact?.phone || logContact.phone || '',
+            linkedin: data.debug?.contact?.linkedin || logContact.linkedin || '',
+        };
 
         const grid = document.getElementById('entitiesGrid');
         grid.innerHTML = `
             <div class="entity-card">
                 <div class="entity-label">Nome</div>
-                <div class="entity-value ${mergedContact.name ? '' : 'missing'}">${mergedContact.name || 'Não detectado'}</div>
+                <div class="entity-value ${contact.name ? '' : 'missing'}">${contact.name || 'Não detectado'}</div>
             </div>
             <div class="entity-card">
                 <div class="entity-label">Email</div>
-                <div class="entity-value ${mergedContact.email ? '' : 'missing'}">${mergedContact.email || 'Não detectado'}</div>
+                <div class="entity-value ${contact.email ? '' : 'missing'}">${contact.email || 'Não detectado'}</div>
             </div>
             <div class="entity-card">
                 <div class="entity-label">Telefone</div>
-                <div class="entity-value ${mergedContact.phone ? '' : 'missing'}">${mergedContact.phone || 'Não detectado'}</div>
+                <div class="entity-value ${contact.phone ? '' : 'missing'}">${contact.phone || 'Não detectado'}</div>
             </div>
             <div class="entity-card">
                 <div class="entity-label">LinkedIn</div>
-                <div class="entity-value ${mergedContact.linkedin ? '' : 'missing'}">${mergedContact.linkedin || 'Não detectado'}</div>
+                <div class="entity-value ${contact.linkedin ? '' : 'missing'}">${contact.linkedin || 'Não detectado'}</div>
             </div>
         `;
 
