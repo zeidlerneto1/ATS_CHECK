@@ -547,88 +547,83 @@ def generate_latex():
 
     exp_latex = ""
     for exp in experience:
-        exp_latex += f"""
-\cventry{{{exp.get('dates', 'MM/AAAA -- MM/AAAA')}}}{{{exp.get('title', 'Cargo')}}}{{{exp.get('company', 'Empresa')}}}{{{location}}}{{}}{{
-{chr(10).join(f'  \item {b}' for b in exp.get('bullets', []))}
-}}"""
+        bullets = "\n".join("  \\item " + b for b in exp.get("bullets", []))
+        exp_latex += """
+\\cventry{%s}{%s}{%s}{%s}{}{%
+%s
+}""" % (exp.get("dates", "MM/AAAA -- MM/AAAA"), exp.get("title", "Cargo"), exp.get("company", "Empresa"), location, bullets)
 
     edu_latex = ""
     for edu in education:
-        edu_latex += f"""
-\cventry{{{edu.get('dates', 'AAAA -- AAAA')}}}{{{edu.get('degree', 'Grau')}}}{{{edu.get('institution', 'Instituição')}}}{{}}{{}}{{}}"""
+        edu_latex += """
+\\cventry{%s}{%s}{%s}{}{}{}""" % (edu.get("dates", "AAAA -- AAAA"), edu.get("degree", "Grau"), edu.get("institution", "Instituição"))
 
     skills_str = ", ".join(skills) if skills else "Skill 1, Skill 2, Skill 3"
 
-    latex = f"""% ATS-Optimized LaTeX CV Template
-% Compatível com: Greenhouse, Workday, Lever, Gupy
-% Instruções: Overleaf → Menu → Compiler → pdfLaTeX
+    header_line = email
+    if phone:
+        header_line += " \\textbar " + phone
+    if location:
+        header_line += " \\textbar " + location
+    if linkedin:
+        header_line += " \\textbar " + linkedin
 
-\documentclass[11pt,a4paper]{{article}}
+    latex = (
+        "% ATS-Optimized LaTeX CV Template\n"
+        "% Compatível com: Greenhouse, Workday, Lever, Gupy\n"
+        "% Instruções: Overleaf → Menu → Compiler → pdfLaTeX\n\n"
+        "\\documentclass[11pt,a4paper]{article}\n\n"
+        "% Metadados para ATS (core.xml equivalent)\n"
+        "\\usepackage[utf8]{inputenc}\n"
+        "\\usepackage[T1]{fontenc}\n"
+        "\\usepackage[brazil]{babel}\n"
+        "\\usepackage{hyperref}\n"
+        "\\hypersetup{\n"
+        "    pdftitle={" + name + " - CV},\n"
+        "    pdfauthor={" + name + "},\n"
+        "    pdfsubject={Curriculo Profissional},\n"
+        "    pdfkeywords={" + skills_str + "},\n"
+        "}\n\n"
+        "% Layout ATS-friendly: single-column, sem margens exóticas\n"
+        "\\usepackage[margin=2cm]{geometry}\n"
+        "\\usepackage{enumitem}\n"
+        "\\setlist[itemize]{leftmargin=1.2em,topsep=2pt,itemsep=1pt}\n\n"
+        "% Cores sutis (ATS ignora, mas humanos apreciam)\n"
+        "\\usepackage{xcolor}\n"
+        "\\definecolor{accent}{HTML}{4F46E5}\n\n"
+        "% Seções\n"
+        "\\usepackage{titlesec}\n"
+        "\\titleformat{\\section}{\\Large\\bfseries\\color{accent}}{}{0em}{}[\\titlerule]\n"
+        "\\titlespacing*{\\section}{0pt}{12pt}{6pt}\n\n"
+        "% Comando para experiência\n"
+        "\\newcommand{\\cventry}[6]{\n"
+        "  \\textbf{#2} \\hfill \\textit{#1}\\\\\n"
+        "  \\textit{#3} \\hfill #4\\\\\n"
+        "  #6\\vspace{6pt}\n"
+        "}\n\n"
+        "\\begin{document}\n\n"
+        "% HEADER\n"
+        "\\begin{center}\n"
+        "  {\\Huge \\textbf{" + name + "}}\\\\[6pt]\n"
+        "  " + header_line + "\n"
+        "\\end{center}\n\n"
+        "\\vspace{8pt}\n\n"
+        "% RESUMO\n"
+        "\\section{Resumo Profissional}\n"
+        + summary + "\n\n"
+        "% EXPERIÊNCIA\n"
+        "\\section{Experiência Profissional}\n"
+        + exp_latex + "\n\n"
+        "% FORMAÇÃO\n"
+        "\\section{Formação Acadêmica}\n"
+        + edu_latex + "\n\n"
+        "% SKILLS\n"
+        "\\section{Habilidades Técnicas}\n"
+        + skills_str + "\n\n"
+        "\\end{document}\n"
+    )
 
-% Metadados para ATS (core.xml equivalent)
-\usepackage[utf8]{{inputenc}}
-\usepackage[T1]{{fontenc}}
-\usepackage[brazil]{{babel}}
-\usepackage{{hyperref}}
-\hypersetup{{
-    pdftitle={{{name} - CV}},
-    pdfauthor={{{name}}},
-    pdfsubject={{Curriculo Profissional}},
-    pdfkeywords={{{skills_str}}},
-}}
-
-% Layout ATS-friendly: single-column, sem margens exóticas
-\usepackage[margin=2cm]{{geometry}}
-\usepackage{{enumitem}}
-\setlist[itemize]{{leftmargin=1.2em,topsep=2pt,itemsep=1pt}}
-
-% Cores sutis (ATS ignora, mas humanos apreciam)
-\usepackage{{xcolor}}
-\definecolor{{accent}}{{HTML}}{{4F46E5}}
-
-% Seções
-\usepackage{{titlesec}}
-\titleformat{{\section}}{{\Large\bfseries\color{{accent}}}}{{}}}{{0em}}{{}}[\titlerule]
-\titlespacing*{{\section}}{{0pt}}{{12pt}}{{6pt}}
-
-% Comando para experiência
-\newcommand{{\cventry}}[6]{{
-  \textbf{{#2}} \hfill \textit{{#1}}\\
-  \textit{{#3}} \hfill #4\\
-  #6\vspace{{6pt}}
-}}
-
-\begin{{document}}
-
-% HEADER
-\begin{{center}}
-  {{\Huge \textbf{{{name}}}}}\\[6pt]
-  {email}{' \textbar ' + phone if phone else ''}{' \textbar ' + location if location else ''}{' \textbar ' + linkedin if linkedin else ''}
-\end{{center}}
-
-\vspace{{8pt}}
-
-% RESUMO
-\section{{Resumo Profissional}}
-{summary}
-
-% EXPERIÊNCIA
-\section{{Experiência Profissional}}
-{exp_latex}
-
-% FORMAÇÃO
-\section{{Formação Acadêmica}}
-{edu_latex}
-
-% SKILLS
-\section{{Habilidades Técnicas}}
-{skills_str}
-
-\end{{document}}
-"""
-
-    return jsonify({"success": True, "latex": latex, "filename": f"{name.lower().replace(' ', '_')}_cv_ats.tex"})
-
+    return jsonify({"success": True, "latex": latex, "filename": name.lower().replace(" ", "_") + "_cv_ats.tex"})
 
 @app.route("/cv-builder")
 def cv_builder():
