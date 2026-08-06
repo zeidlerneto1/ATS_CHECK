@@ -216,6 +216,9 @@ def analyze():
     # Dados extras para o modo debug/logger
     extra = engine.get_debug_data() if hasattr(engine, 'get_debug_data') else {}
 
+    # Dados enriquecidos da Onda 1
+    debug = engine.get_debug_data()
+
     return jsonify({
         "success": True,
         "job": {
@@ -241,7 +244,11 @@ def analyze():
         "logs": logs_buffer,
         "raw_text_preview": result.raw_text[:500] + "..." if len(result.raw_text) > 500 else result.raw_text,
         "raw_text": result.raw_text,
-        "debug": extra,
+        "debug": {
+            **debug,
+            "metadata": parsed.get("metadata", {}),
+            "file_type": parsed.get("file_type", "unknown"),
+        },
     })
 
 @app.route("/api/scrape", methods=["POST"])
